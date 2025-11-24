@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Configuration - EPD Clock</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <h2>Configuration - EPD Clock</h2>
+  <a href="/"><button>Retour au dashboard</button></a>
+
+  <section>
+    <h3>Wi-Fi (Station)</h3>
+    SSID: <input id="wifi_ssid" placeholder="mon_wifi"><br>
+    Pass: <input id="wifi_pass" type="password" placeholder="laisser vide pour ne pas changer"><br>
+    <small>Astuce : si non configuré, l’appareil démarre en <b>point d’accès</b> <i>EPD_Clock</i>.</small>
+  </section>
+
+  <hr>
+
+  <section>
+    <h3>MQTT</h3>
+    <label><input type="checkbox" id="mqtt_enabled"> MQTT activé</label><br>
+    Serveur: <input id="mqtt_host" placeholder="mqtt.local"><br>
+    Port: <input id="mqtt_port" type="number" min="1" max="65535"><br>
+    User: <input id="mqtt_user"><br>
+    Pass: <input id="mqtt_pass" type="password" placeholder="laisser vide pour ne pas changer"><br>
+    Topic: <input id="mqtt_topic" placeholder="epdclock/measure"><br>
+  </section>
+
+  <hr>
+
+  <section>
+    <h3>Timing</h3>
+    Deep sleep (s): <input id="deepsleep_interval_s" type="number"><br>
+    Timeout interactif (ms): <input id="interactive_timeout_ms" type="number"><br>
+  </section>
+
+  <hr>
+
+  <section>
+    <h3>Divers</h3>
+    Device name: <input id="device_name"><br>
+    Admin user: <input id="admin_user"><br>
+    Admin pass: <input id="admin_pass" type="password" placeholder="laisser vide pour ne pas changer"><br>
+  </section>
+
+  <hr>
+
+  <button id="btnSave">Sauvegarder</button>
+  <button id="btnReload">Recharger</button>
+  <div id="status"></div>
+
+  <script src="/script_config.js"></script>
+</body>
+</html>
