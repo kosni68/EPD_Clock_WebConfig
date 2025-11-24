@@ -111,6 +111,11 @@ void ConfigManager::applyDefaultsIfNeeded()
         config_.filter_max_cm = 400.0f;
         Serial.println("  -> filter_max_cm défini à 400.0");
     }
+    if (strlen(config_.tz_string) == 0)
+    {
+        strcpy(config_.tz_string, "CET-1CEST,M3.5.0/2,M10.5.0/3");
+        Serial.println("  -> tz_string défini à Europe/Paris (été/hiver automatique)");
+    }
 }
 
 bool ConfigManager::loadFromPreferences()
@@ -151,6 +156,8 @@ bool ConfigManager::loadFromPreferences()
     prefs.getString("adm_user", config_.admin_user, sizeof(config_.admin_user));
     prefs.getString("adm_pass", config_.admin_pass, sizeof(config_.admin_pass));
     prefs.getString("app_ver", config_.app_version, sizeof(config_.app_version));
+
+    prefs.getString("tz_str", config_.tz_string, sizeof(config_.tz_string));
 
     prefs.end();
 
@@ -203,6 +210,8 @@ bool ConfigManager::save()
     prefs.putString("adm_pass", config_.admin_pass);
     prefs.putString("app_ver", config_.app_version);
 
+    prefs.putString("tz_str", config_.tz_string);
+
     prefs.end();
     Serial.println(" Configuration sauvegardée avec succès !");
     return true;
@@ -238,6 +247,8 @@ String ConfigManager::toJsonString()
     doc["admin_user"] = config_.admin_user;
     doc["admin_pass"] = "*****";
     doc["app_version"] = config_.app_version;
+
+    doc["tz_string"] = config_.tz_string;
 
     String s;
     serializeJson(doc, s);
@@ -317,6 +328,8 @@ bool ConfigManager::updateFromJson(const String &json)
             if (ap && strcmp(ap, "*****") != 0 && strlen(ap) > 0)
                 strlcpy(config_.admin_pass, ap, sizeof(config_.admin_pass));
         }
+        if (doc["tz_string"].is<const char *>())
+            strlcpy(config_.tz_string, doc["tz_string"], sizeof(config_.tz_string));
     }
 
     Serial.println("  -> Mise à jour de la configuration en mémoire OK.");

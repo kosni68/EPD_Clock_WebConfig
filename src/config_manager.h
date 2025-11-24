@@ -14,6 +14,7 @@
 #define ADMIN_USER_LEN 16
 #define ADMIN_PASS_LEN 16
 #define APP_VERSION_LEN 16
+#define TZ_STRING_LEN 64
 
 struct AppConfig
 {
@@ -49,6 +50,9 @@ struct AppConfig
     char admin_pass[ADMIN_PASS_LEN];
 
     char app_version[APP_VERSION_LEN];
+
+    // ---- Horloge / fuseau horaire ----
+    char tz_string[TZ_STRING_LEN]; // ex: "CET-1CEST,M3.5.0/2,M10.5.0/3"
 };
 
 class ConfigManager

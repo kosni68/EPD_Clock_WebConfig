@@ -6,7 +6,6 @@ $dirs = @(
 
 # Fichiers spécifiques à inclure
 $files = @(
-    ".\Chatgpt_instruction.md",
     "../platformio.ini"
 )
 

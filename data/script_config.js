@@ -21,6 +21,9 @@ async function fetchConfig() {
     document.getElementById('device_name').value = json.device_name || '';
     document.getElementById('admin_user').value = json.admin_user || '';
 
+    document.getElementById('tz_string').value =
+      json.tz_string || 'CET-1CEST,M3.5.0/2,M10.5.0/3';
+
     showStatus('Config chargée', false);
   } catch (e) {
     showStatus('Erreur fetch: ' + e, true);
@@ -49,6 +52,8 @@ function gatherConfig() {
   obj.admin_user = document.getElementById('admin_user').value || '';
   const ap = document.getElementById('admin_pass').value;
   if (ap && ap.length > 0) obj.admin_pass = ap;
+
+  obj.tz_string = document.getElementById('tz_string').value || '';
 
   return obj;
 }

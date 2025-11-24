@@ -8,6 +8,7 @@
 #include "esp_sleep.h"
 #include "PCF85063A-SOLDERED.h"
 #include <WiFi.h>
+#include <time.h>
 
 #include "config.h"
 #include "config_manager.h"
@@ -47,6 +48,7 @@ static int readBatteryVoltage();
 static void epdDraw();
 static void goDeepSleep();
 static void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &batteryMv);
+static void syncRtcFromNtpIfPossible();
 
 static void goDeepSleep()
 {
@@ -126,6 +128,47 @@ static void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct,
         voltageSegments = 0;
     if (voltageSegments > 5)
         voltageSegments = 5;
+}
+
+static void syncRtcFromNtpIfPossible()
+{
+    if (WiFi.status() != WL_CONNECTED)
+    {
+        Serial.println("[RTC] WiFi non connecté, NTP impossible.");
+        return;
+    }
+
+    const auto cfg = ConfigManager::instance().getConfig();
+    const char *tz = cfg.tz_string;
+    if (!tz || strlen(tz) == 0)
+    {
+        // défaut : Europe/Paris
+        tz = "CET-1CEST,M3.5.0/2,M10.5.0/3";
+    }
+
+    Serial.printf("[RTC] Sync NTP (TZ=\"%s\")...\n", tz);
+
+    // Initialise SNTP + fuseau (avec heure d'été/hiver automatique)
+    configTzTime(tz, "pool.ntp.org", "time.nist.gov", "time.google.com");
+
+    struct tm timeinfo;
+    if (!getLocalTime(&timeinfo, 10000))
+    {
+        Serial.println("[RTC][ERR] getLocalTime a échoué !");
+        return;
+    }
+
+    // Mise à l'heure de la RTC (heure locale déjà corrigée été/hiver)
+    rtc.setTime(timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+    rtc.setDate(timeinfo.tm_wday,
+                timeinfo.tm_mday,
+                timeinfo.tm_mon + 1,
+                timeinfo.tm_year + 1900);
+
+    Serial.printf("[RTC] RTC réglée sur %02d:%02d:%02d %02d/%02d/%04d (wday=%d)\n",
+                  timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec,
+                  timeinfo.tm_mday, timeinfo.tm_mon + 1, timeinfo.tm_year + 1900,
+                  timeinfo.tm_wday);
 }
 
 static void epdDraw()
@@ -250,18 +293,28 @@ void setup()
     float tempC = 0.0f;
     float humidity = 0.0f;
     int batteryMv = 0;
-    readTimeAndSensorAndPrepareStrings(tempC, humidity, batteryMv);
 
     if (cause == ESP_SLEEP_WAKEUP_TIMER)
     {
         Serial.println("[MODE] Réveil TIMER -> mode mesure + deep sleep");
 
-        if (connectWiFiShort(6000))
+        bool wifiOK = connectWiFiShort(6000);
+        if (wifiOK)
+        {
+            // Mise à l'heure éventuelle du RTC (en fonction du fuseau configuré)
+            syncRtcFromNtpIfPossible();
+        }
+
+        // On relit l'heure (qui peut avoir été mise à jour) + les capteurs
+        readTimeAndSensorAndPrepareStrings(tempC, humidity, batteryMv);
+
+        if (wifiOK)
         {
             epdDraw();
             publishMQTT_reading(tempC, humidity, batteryMv);
             disconnectWiFiClean();
-        }else
+        }
+        else
         {
             epdDraw();
         }
@@ -270,8 +323,16 @@ void setup()
     }
     else
     {
-
+        // Démarrage / reset : mode interactif + serveur web
         startWebServer();
+
+        // Si connecté au Wi‑Fi (mode STA), on peut faire le NTP
+        if (WiFi.status() == WL_CONNECTED)
+        {
+            syncRtcFromNtpIfPossible();
+        }
+
+        readTimeAndSensorAndPrepareStrings(tempC, humidity, batteryMv);
 
         epdDraw();
 

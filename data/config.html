@@ -39,6 +39,20 @@
   </section>
 
   <hr>
+  
+  <section>
+    <h3>Horloge / Fuseau horaire</h3>
+    Fuseau horaire :
+    <select id="tz_string">
+      <option value="UTC0">UTC (sans heure d'été)</option>
+      <option value="CET-1CEST,M3.5.0/2,M10.5.0/3">
+        Europe/Paris (UTC+1 / UTC+2, été/hiver automatique)
+      </option>
+    </select><br>
+    <small>Utilisé pour régler automatiquement l’horloge RTC via NTP, avec gestion de l’heure d’été/hiver.</small>
+  </section>
+  
+  <hr>
 
   <section>
     <h3>Divers</h3>
