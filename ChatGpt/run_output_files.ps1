@@ -1,14 +1,13 @@
 # Répertoires à inclure
 $dirs = @(
-    "..\A7\prg\network",
-    "..\A7\prg\dataProcessor",
+    "../src",
+    "../data"
 )
 
 # Fichiers spécifiques à inclure
 $files = @(
     ".\Chatgpt_instruction.md",
-    "..\A7\prg\main.cpp",
-    "..\A7\Azure\Dockerfile",
+    "../platformio.ini"
 )
 
 # Extensions à inclure

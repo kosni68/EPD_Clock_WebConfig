@@ -3,13 +3,13 @@ set -euo pipefail
 
 # --- Config: répertoires, fichiers et extensions (chemins Linux) ---
 dirs=(
-  "../A7/prg/gui"
-  "../A7/prg/azure_iot"
+  "../src"
+  "../data"
 )
 
 files=(
   "./Chatgpt_instruction.md"
-  "../A7/prg/main.cpp"
+  "../platformio.ini"
 )
 
 ext=(".md" ".txt" ".cpp" ".c" ".h" ".hpp" ".html" ".css" ".js" ".ini")
