@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
@@ -9,24 +9,24 @@
 </head>
 <body>
   <h2>Configuration - EPD Clock</h2>
-  <a href="/"><button>Retour au dashboard</button></a>
+  <a href="/"><button>Back to dashboard</button></a>
 
   <section>
     <h3>Wi-Fi (Station)</h3>
-    SSID: <input id="wifi_ssid" placeholder="mon_wifi"><br>
-    Pass: <input id="wifi_pass" type="password" placeholder="laisser vide pour ne pas changer"><br>
-    <small>Astuce : si non configuré, l’appareil démarre en <b>point d’accès</b> <i>EPD_Clock</i>.</small>
+    SSID: <input id="wifi_ssid" placeholder="my_wifi"><br>
+    Password: <input id="wifi_pass" type="password" placeholder="leave empty to keep current"><br>
+    <small>Tip: if not configured, the device starts in access-point mode <b>EPD_Clock</b>.</small>
   </section>
 
   <hr>
 
   <section>
     <h3>MQTT</h3>
-    <label><input type="checkbox" id="mqtt_enabled"> MQTT activé</label><br>
-    Serveur: <input id="mqtt_host" placeholder="mqtt.local"><br>
+    <label><input type="checkbox" id="mqtt_enabled"> Enable MQTT</label><br>
+    Server: <input id="mqtt_host" placeholder="mqtt.local"><br>
     Port: <input id="mqtt_port" type="number" min="1" max="65535"><br>
     User: <input id="mqtt_user"><br>
-    Pass: <input id="mqtt_pass" type="password" placeholder="laisser vide pour ne pas changer"><br>
+    Password: <input id="mqtt_pass" type="password" placeholder="leave empty to keep current"><br>
     Topic: <input id="mqtt_topic" placeholder="epdclock/measure"><br>
     <button id="btnMqttTest">Test MQTT</button>
   </section>
@@ -36,48 +36,48 @@
   <section>
     <h3>Timing</h3>
     Deep sleep (s): <input id="deepsleep_interval_s" type="number"><br>
-    Timeout interactif (ms): <input id="interactive_timeout_ms" type="number"><br>
+    Interactive timeout (ms): <input id="interactive_timeout_ms" type="number"><br>
   </section>
 
   <hr>
   
   <section>
-    <h3>Horloge / Fuseau horaire</h3>
-    Fuseau horaire :
+    <h3>Clock / Timezone</h3>
+    Timezone:
     <select id="tz_string">
       <option value="UTC0">UTC (sans heure d'été)</option>
       <option value="CET-1CEST,M3.5.0/2,M10.5.0/3">
-        Europe/Paris (UTC+1 / UTC+2, été/hiver automatique)
+        Europe/Paris (UTC+1 / UTC+2, DST auto)
       </option>
     </select><br>
-    <small>Utilisé pour régler automatiquement l’horloge RTC via NTP, avec gestion de l’heure d’été/hiver.</small>
+    <small>Used to set system time via NTP, with DST handling.</small>
   </section>
   
   <hr>
 
   <section>
-    <h3>Divers</h3>
+    <h3>Misc</h3>
     Device name: <input id="device_name"><br>
     Admin user: <input id="admin_user"><br>
-    Admin pass: <input id="admin_pass" type="password" placeholder="laisser vide pour ne pas changer"><br>
+    Admin password: <input id="admin_pass" type="password" placeholder="leave empty to keep current"><br>
     <hr>
-    <h4>Offsets capteurs</h4>
+    <h4>Sensor offsets</h4>
     Temp offset (°C): <input id="temp_offset" type="number" step="0.1" value="0"><br>
     Humidity offset (%): <input id="hum_offset" type="number" step="0.1" value="0"><br>
   </section>
 
   <hr>
 
-  <button id="btnSave">Sauvegarder</button>
-  <button id="btnReload">Recharger</button>
-  <button id="btnReboot" style="background-color: #ff6b6b; color: white;">Redémarrer</button>
+  <button id="btnSave">Save</button>
+  <button id="btnReload">Reload</button>
+  <button id="btnReboot" style="background-color: #ff6b6b; color: white;">Reboot</button>
   <div id="status"></div>
 
   <hr>
 
   <section>
     <h3>Logs</h3>
-    <pre id="logOutput" style="white-space:pre-wrap;max-height:400px;overflow:auto;border:1px solid #ccc;padding:8px;margin-top:8px;background:#f5f5f5;font-size:12px;">Chargement...</pre>
+    <pre id="logOutput" style="white-space:pre-wrap;max-height:400px;overflow:auto;border:1px solid #ccc;padding:8px;margin-top:8px;background:#f5f5f5;font-size:12px;">Loading...</pre>
   </section>
 
   <script src="/script_config.js"></script>

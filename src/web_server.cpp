@@ -17,26 +17,26 @@ extern void epdDraw();
 
 void startWebServer()
 {
-    Serial.println("[WEB] Initialisation du serveur HTTP...");
+    Serial.println("[WEB] Initializing HTTP server...");
 
     if (!LittleFS.begin(true))
     {
-        Serial.println("[WEB][ERREUR] Échec du montage LittleFS !");
+        Serial.println("[WEB][ERROR] LittleFS mount failed!");
         while (true)
             delay(1000);
     }
 
     if (!connectWiFiShort(8000))
     {
-        Serial.println("[WEB][WARN] Échec de connexion Wi-Fi. Activation du mode point d’accès...");
+        Serial.println("[WEB][WARN] Wi-Fi connection failed. Enabling access point mode...");
         WiFi.mode(WIFI_AP);
         WiFi.softAP("EPD_Clock");
-        Serial.print("[WEB] Point d’accès actif : ");
+        Serial.print("[WEB] Access point active: ");
         Serial.println(WiFi.softAPIP());
     }
     else
     {
-        Serial.print("[WEB] Connecté au Wi-Fi : ");
+        Serial.print("[WEB] Connected to Wi-Fi: ");
         Serial.println(WiFi.localIP());
     }
 
@@ -65,10 +65,9 @@ void startWebServer()
         const char *adminUser = ConfigManager::instance().getAdminUser();
         const char *adminPass = ConfigManager::instance().getAdminPass();
         if (!request->authenticate(adminUser, adminPass)) {
-            Serial.println("[WEB][AUTH] Auth requise sur /config.html");
+            Serial.println("[WEB][AUTH] Authentication required on /config.html");
             return request->requestAuthentication();
         }
-
         Serial.println("[WEB] GET /config.html (auth OK)");
         AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/config.html", "text/html");
         response->addHeader("Content-Type", "text/html; charset=utf-8");
@@ -79,7 +78,7 @@ void startWebServer()
         const char *adminUser = ConfigManager::instance().getAdminUser();
         const char *adminPass = ConfigManager::instance().getAdminPass();
         if (!request->authenticate(adminUser, adminPass)) {
-            Serial.println("[WEB][AUTH] Auth requise sur /script_config.js");
+            Serial.println("[WEB][AUTH] Authentication required on /script_config.js");
             return request->requestAuthentication();
         }
         Serial.println("[WEB] GET /script_config.js (auth OK)");
@@ -190,12 +189,12 @@ void startWebServer()
               {
                   const char *adminUser = ConfigManager::instance().getAdminUser();
                   const char *adminPass = ConfigManager::instance().getAdminPass();
-                  if (!request->authenticate(adminUser, adminPass))
-                  {
-                      Serial.println("[WEB][AUTH] /api/config POST non autorisé");
-                      request->requestAuthentication();
-                      return;
-                  }
+                      if (!request->authenticate(adminUser, adminPass))
+                      {
+                          Serial.println("[WEB][AUTH] /api/config POST not authorized");
+                          request->requestAuthentication();
+                          return;
+                      }
 
                   if (index == 0)
                   {
@@ -208,7 +207,7 @@ void startWebServer()
                       }
                       request->_tempObject = new String();
                       ((String *)request->_tempObject)->reserve(total);
-                      Serial.printf("[WEB] Début réception body JSON (%u octets)\n", (unsigned)total);
+                      Serial.printf("[WEB] Begin receiving JSON body (%u bytes)\n", (unsigned)total);
                   }
 
                   String *body = reinterpret_cast<String *>(request->_tempObject);
@@ -235,11 +234,11 @@ void startWebServer()
         const char *adminPass = ConfigManager::instance().getAdminPass();
         if (!request->authenticate(adminUser, adminPass))
         {
-            Serial.println("[WEB][AUTH] /api/reboot POST non autorisé");
+            Serial.println("[WEB][AUTH] /api/reboot POST not authorized");
             return request->requestAuthentication();
         }
 
-        Serial.println("[WEB] Redémarrage demandé...");
+        Serial.println("[WEB] Reboot requested...");
         request->send(200, "application/json; charset=utf-8", "{\"ok\":true}");
         delay(500);
         ESP.restart();

@@ -9,7 +9,7 @@ ConfigManager &ConfigManager::instance()
 
 bool ConfigManager::begin()
 {
-    Serial.println("[ConfigManager] Initialisation...");
+    Serial.println("[ConfigManager] Initialization...");
 
     Preferences prefs;
     if (!prefs.begin("config", true))
@@ -23,7 +23,7 @@ bool ConfigManager::begin()
 
     if (!exists)
     {
-        Serial.println("[ConfigManager] Aucune configuration trouvée. Application des valeurs par défaut...");
+        Serial.println("[ConfigManager] No configuration found. Applying default values...");
         applyDefaultsIfNeeded();
         save();
         return true;
@@ -31,102 +31,102 @@ bool ConfigManager::begin()
 
     bool ok = loadFromPreferences();
     applyDefaultsIfNeeded();
-    Serial.printf("[ConfigManager] Chargement %s\n", ok ? "réussi" : "échoué");
+    Serial.printf("[ConfigManager] Load %s\n", ok ? "succeeded" : "failed");
     return ok;
 }
 
 void ConfigManager::applyDefaultsIfNeeded()
 {
     std::lock_guard<std::mutex> lk(mutex_);
-    Serial.println("[ConfigManager] Vérification des valeurs par défaut...");
+    Serial.println("[ConfigManager] Checking default values...");
 
     if (config_.interactive_timeout_ms == 0)
     {
         config_.interactive_timeout_ms = 600000;
-        Serial.println("  -> interactive_timeout_ms défini à 600000");
+        Serial.println("  -> interactive_timeout_ms set to 600000");
     }
     if (config_.deepsleep_interval_s == 0)
     {
         config_.deepsleep_interval_s = 60;
-        Serial.println("  -> deepsleep_interval_s défini à 60");
+        Serial.println("  -> deepsleep_interval_s set to 60");
     }
     if (config_.measure_interval_ms < 50)
     {
         config_.measure_interval_ms = 1000;
-        Serial.println("  -> measure_interval_ms défini à 1000");
+        Serial.println("  -> measure_interval_ms set to 1000");
     }
     if (config_.mqtt_port == 0)
     {
         config_.mqtt_port = 1883;
-        Serial.println("  -> mqtt_port défini à 1883");
+        Serial.println("  -> mqtt_port set to 1883");
     }
     if (strlen(config_.mqtt_host) == 0)
     {
         strcpy(config_.mqtt_host, "broker.local");
-        Serial.println("  -> mqtt_host défini à broker.local");
+        Serial.println("  -> mqtt_host set to broker.local");
     }
     if (strlen(config_.device_name) == 0)
     {
         strcpy(config_.device_name, "EPD-Clock");
-        Serial.println("  -> device_name défini à EPD-Clock");
+        Serial.println("  -> device_name set to EPD-Clock");
     }
     if (strlen(config_.app_version) == 0)
     {
         strcpy(config_.app_version, "1.0.0");
-        Serial.println("  -> app_version défini à 1.0.0");
+        Serial.println("  -> app_version set to 1.0.0");
     }
     if (strlen(config_.admin_user) == 0)
     {
         strcpy(config_.admin_user, "admin");
-        Serial.println("  -> admin_user défini à 'admin' (à changer !)");
+        Serial.println("  -> admin_user set to 'admin' (please change!)");
     }
     if (strlen(config_.admin_pass) == 0)
     {
         strcpy(config_.admin_pass, "admin");
-        Serial.println("  -> admin_pass défini à 'admin' (à changer !)");
+        Serial.println("  -> admin_pass set to 'admin' (please change!)");
     }
 
     if (config_.avg_alpha <= 0.0f || config_.avg_alpha > 1.0f)
     {
         config_.avg_alpha = 0.25f;
-        Serial.println("  -> avg_alpha défini à 0.25");
+        Serial.println("  -> avg_alpha set to 0.25");
     }
     if (config_.median_n == 0 || config_.median_n > 15)
     {
         config_.median_n = 5;
-        Serial.println("  -> median_n défini à 5");
+        Serial.println("  -> median_n set to 5");
     }
     if (config_.median_delay_ms > 1000)
     {
         config_.median_delay_ms = 50;
-        Serial.println("  -> median_delay_ms défini à 50");
+        Serial.println("  -> median_delay_ms set to 50");
     }
     if (config_.filter_min_cm <= 0.0f)
     {
         config_.filter_min_cm = 2.0f;
-        Serial.println("  -> filter_min_cm défini à 2.0");
+        Serial.println("  -> filter_min_cm set to 2.0");
     }
     if (config_.filter_max_cm < config_.filter_min_cm)
     {
         config_.filter_max_cm = 400.0f;
-        Serial.println("  -> filter_max_cm défini à 400.0");
+        Serial.println("  -> filter_max_cm set to 400.0");
     }
     if (strlen(config_.tz_string) == 0)
     {
         strcpy(config_.tz_string, "CET-1CEST,M3.5.0/2,M10.5.0/3");
-        Serial.println("  -> tz_string défini à Europe/Paris (été/hiver automatique)");
+        Serial.println("  -> tz_string set to Europe/Paris (DST auto)");
     }
 }
 
 bool ConfigManager::loadFromPreferences()
 {
     std::lock_guard<std::mutex> lk(mutex_);
-    Serial.println("[ConfigManager] Chargement depuis Preferences...");
+    Serial.println("[ConfigManager] Loading from Preferences...");
 
     Preferences prefs;
     if (!prefs.begin("config", true))
     {
-        Serial.println("  -> Erreur: impossible d’ouvrir les preferences en lecture.");
+        Serial.println("  -> Error: cannot open Preferences for reading.");
         return false;
     }
 
@@ -165,14 +165,14 @@ bool ConfigManager::loadFromPreferences()
     prefs.end();
 
     Serial.printf("  -> WiFi SSID: %s (%s)\n",
-                  (strlen(config_.wifi_ssid) ? config_.wifi_ssid : "<non configuré>"),
-                  (strlen(config_.wifi_pass) ? "pass défini" : "pass non défini"));
+                  (strlen(config_.wifi_ssid) ? config_.wifi_ssid : "<not configured>"),
+                  (strlen(config_.wifi_pass) ? "password set" : "no password"));
     Serial.printf("  -> MQTT %s @ %s:%d (user=%s)\n",
-                  config_.mqtt_enabled ? "activé" : "désactivé",
+                  config_.mqtt_enabled ? "enabled" : "disabled",
                   config_.mqtt_host, config_.mqtt_port, config_.mqtt_user);
-    Serial.printf("  -> Device: %s, Intervalle mesure: %lu ms\n",
+    Serial.printf("  -> Device: %s, Measure interval: %lu ms\n",
                   config_.device_name, config_.measure_interval_ms);
-    Serial.printf("  -> DeepSleep: %lu s, Timeout interactif: %lu ms\n",
+    Serial.printf("  -> DeepSleep: %lu s, Interactive timeout: %lu ms\n",
                   (unsigned long)config_.deepsleep_interval_s,
                   (unsigned long)config_.interactive_timeout_ms);
     return true;
@@ -185,7 +185,7 @@ bool ConfigManager::save()
     if (!prefs.begin("config", false))
         return false;
 
-    Serial.println("[ConfigManager] Sauvegarde dans Preferences...");
+    Serial.println("[ConfigManager] Saving to Preferences...");
 
     prefs.putString("wifi_ssid", config_.wifi_ssid);
     prefs.putString("wifi_pass", config_.wifi_pass);
@@ -218,7 +218,7 @@ bool ConfigManager::save()
     prefs.putString("tz_str", config_.tz_string);
 
     prefs.end();
-    Serial.println(" Configuration sauvegardée avec succès !");
+    Serial.println(" Configuration saved successfully!");
     return true;
 }
 
@@ -259,19 +259,19 @@ String ConfigManager::toJsonString()
 
     String s;
     serializeJson(doc, s);
-    Serial.println("[ConfigManager] Conversion en JSON effectuée.");
+    Serial.println("[ConfigManager] Converted to JSON.");
     return s;
 }
 
 bool ConfigManager::updateFromJson(const String &json)
 {
-    Serial.println("[ConfigManager] Mise à jour depuis JSON...");
+    Serial.println("[ConfigManager] Updating from JSON...");
 
     JsonDocument doc;
     auto err = deserializeJson(doc, json);
     if (err)
     {
-        Serial.println("[ConfigManager][ERR] JSON invalide !");
+        Serial.println("[ConfigManager][ERR] Invalid JSON!");
         return false;
     }
 
@@ -343,16 +343,16 @@ bool ConfigManager::updateFromJson(const String &json)
             strlcpy(config_.tz_string, doc["tz_string"], sizeof(config_.tz_string));
     }
 
-    Serial.println("  -> Mise à jour de la configuration en mémoire OK.");
+    Serial.println("  -> In-memory configuration update OK.");
 
     applyDefaultsIfNeeded();
 
     xTaskCreate(
         [](void *)
         {
-            Serial.println("[ConfigManager][Task] Sauvegarde asynchrone en cours...");
+            Serial.println("[ConfigManager][Task] Async save in progress...");
             ConfigManager::instance().save();
-            Serial.println("[ConfigManager][Task] Sauvegarde terminée !");
+            Serial.println("[ConfigManager][Task] Save completed!");
             vTaskDelete(nullptr);
         },
         "saveConfigAsync", 4096, nullptr, 1, nullptr);

@@ -40,7 +40,7 @@ bool connectWiFiShort(uint32_t timeoutMs)
     const auto cfg = ConfigManager::instance().getConfig();
     if (strlen(cfg.wifi_ssid) == 0)
     {
-        DEBUG_PRINT("[WiFi] Aucun SSID configuré, pas de connexion STA.");
+        DEBUG_PRINT("[WiFi] No SSID configured, skipping STA connection.");
         return false;
     }
 
@@ -50,20 +50,20 @@ bool connectWiFiShort(uint32_t timeoutMs)
     else
         WiFi.begin(cfg.wifi_ssid, cfg.wifi_pass);
 
-    DEBUG_PRINTF("[WiFi] Connexion à '%s'...\n", cfg.wifi_ssid);
+    DEBUG_PRINTF("[WiFi] Connecting to '%s'...\n", cfg.wifi_ssid);
 
     uint32_t t0 = millis();
     while (millis() - t0 < timeoutMs)
     {
         if (WiFi.status() == WL_CONNECTED)
         {
-            DEBUG_PRINTF("[WiFi] Connecté: %s\n", WiFi.localIP().toString().c_str());
+            DEBUG_PRINTF("[WiFi] Connected: %s\n", WiFi.localIP().toString().c_str());
             return true;
         }
         delay(200);
     }
 
-    DEBUG_PRINT("[WiFi] Timeout de connexion.");
+    DEBUG_PRINT("[WiFi] Connection timeout.");
     return (WiFi.status() == WL_CONNECTED);
 }
 
@@ -71,7 +71,7 @@ void disconnectWiFiClean()
 {
     if (WiFi.status() == WL_CONNECTED)
     {
-        DEBUG_PRINT("[WiFi] Déconnexion propre...");
+        DEBUG_PRINT("[WiFi] Clean disconnect...");
         WiFi.disconnect(true, true);
         WiFi.mode(WIFI_OFF);
         delay(50);

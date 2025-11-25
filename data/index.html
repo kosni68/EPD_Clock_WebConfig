@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -8,13 +8,13 @@
 </head>
 <body>
   <h2>EPD Clock - Dashboard</h2>
-  <a href="/config.html"><button>Configurer l'appareil</button></a>
-  <p>L’affichage e-paper montre l’heure, la date, la température et l’humidité.</p>
+  <a href="/config.html"><button>Configure device</button></a>
+  <p>The e-paper display shows time, date, temperature and humidity.</p>
   <hr>
   <h3>Mesures</h3>
   <canvas id="chart" width="600" height="200" style="max-width:100%;"></canvas>
-  <div style="margin-top:8px; font-size:13px; color:#333;">Dernières logs :</div>
-  <pre id="dashLogs" style="white-space:pre-wrap;max-height:200px;overflow:auto;border:1px solid #ccc;padding:8px;background:#f9f9f9;font-size:12px;">Chargement...</pre>
+  <div style="margin-top:8px; font-size:13px; color:#333;">Latest logs:</div>
+  <pre id="dashLogs" style="white-space:pre-wrap;max-height:200px;overflow:auto;border:1px solid #ccc;padding:8px;background:#f9f9f9;font-size:12px;">Loading...</pre>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>

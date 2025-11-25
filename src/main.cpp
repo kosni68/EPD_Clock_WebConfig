@@ -197,7 +197,7 @@ static void syncRtcFromNtpIfPossible()
 {
     if (WiFi.status() != WL_CONNECTED)
     {
-        Serial.println("[RTC] WiFi non connecté, NTP impossible.");
+        Serial.println("[NTP] Wi-Fi not connected, NTP unavailable.");
         return;
     }
 
@@ -209,7 +209,7 @@ static void syncRtcFromNtpIfPossible()
         tz = "CET-1CEST,M3.5.0/2,M10.5.0/3";
     }
 
-    Serial.printf("[RTC] Sync NTP (TZ=\"%s\")...\n", tz);
+    Serial.printf("[NTP] Sync NTP (TZ=\"%s\")...\n", tz);
 
     // Initialise SNTP + fuseau (avec heure d'été/hiver automatique)
     configTzTime(tz, "pool.ntp.org", "time.nist.gov", "time.google.com");
@@ -217,12 +217,12 @@ static void syncRtcFromNtpIfPossible()
     struct tm timeinfo;
     if (!getLocalTime(&timeinfo, 10000))
     {
-        Serial.println("[RTC][ERR] getLocalTime a échoué !");
+        Serial.println("[NTP][ERR] getLocalTime failed!");
         return;
     }
 
     // System time (NTP) is configured; no hardware RTC used anymore
-    Serial.printf("[NTP] Heure système obtenue %02d:%02d:%02d %02d/%02d/%04d (wday=%d)\n",
+    Serial.printf("[NTP] System time obtained %02d:%02d:%02d %02d/%02d/%04d (wday=%d)\n",
                   timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec,
                   timeinfo.tm_mday, timeinfo.tm_mon + 1, timeinfo.tm_year + 1900,
                   timeinfo.tm_wday);
@@ -301,15 +301,16 @@ void epdDraw()
 
         display.setTextColor(GxEPD_BLACK);
         display.setFont(&DejaVu_Sans_Condensed_Bold_23);
+        // Show application version instead of static label
         display.setCursor(120, 62);
-        display.print("TIME");
-        
-        // --- Ligne Wi-Fi : AP/STA + IP ---
+        display.print(ConfigManager::instance().getConfig().app_version);
+
+        // Wi-Fi status: AP/STA + IP
         String wifiStr = getWifiStatusString();
 
-        display.setFont(&DejaVu_Sans_Condensed_Bold_15); // petite police lisible
+        display.setFont(&DejaVu_Sans_Condensed_Bold_15); // small readable font
         display.setTextColor(GxEPD_BLACK);
-        // Bas de l'écran (y ≈ 195 sur 200px de hauteur)
+        // Bottom of the screen (y ≈ 195 on a 200px tall display)
         display.setCursor(40, 200);
         display.print(wifiStr);
 
@@ -359,7 +360,7 @@ void setup()
 
     if (!ConfigManager::instance().begin())
     {
-        Serial.println("[Config] Erreur de chargement, utilisation des valeurs par défaut.");
+        Serial.println("[Config] Loading error, using default values.");
         ConfigManager::instance().save();
     }
 
@@ -373,16 +374,16 @@ void setup()
 
     if (cause == ESP_SLEEP_WAKEUP_TIMER)
     {
-        Serial.println("[MODE] Réveil TIMER -> mode mesure + deep sleep");
+        Serial.println("[MODE] TIMER wakeup -> measurement + deep sleep mode");
 
         bool wifiOK = connectWiFiShort(6000);
         if (wifiOK)
         {
-            // Mise à l'heure éventuelle du RTC (en fonction du fuseau configuré)
+            // Sync system time via NTP if Wi‑Fi available (timezone aware)
             syncRtcFromNtpIfPossible();
         }
 
-        // On relit l'heure (qui peut avoir été mise à jour) + les capteurs
+        // Re-read the current time (may have been updated) and sensors
         readTimeAndSensorAndPrepareStrings(tempC, humidity, batteryMv);
 
         if (wifiOK)
@@ -403,7 +404,7 @@ void setup()
         // Démarrage / reset : mode interactif + serveur web
         startWebServer();
 
-        // Si connecté au Wi‑Fi (mode STA), on peut faire le NTP
+        // If connected to Wi‑Fi (STA mode), we can perform NTP sync
         if (WiFi.status() == WL_CONNECTED)
         {
             syncRtcFromNtpIfPossible();

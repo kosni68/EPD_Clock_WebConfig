@@ -2,7 +2,7 @@ async function fetchConfig() {
   try {
     const res = await fetch('/api/config', {cache: 'no-store'});
     if (!res.ok) {
-      showStatus('Erreur chargement config: ' + res.status, true);
+      showStatus('Config load error: ' + res.status, true);
       return;
     }
     const json = await res.json();
@@ -34,9 +34,9 @@ async function fetchConfig() {
     document.getElementById('tz_string').value =
       json.tz_string || 'CET-1CEST,M3.5.0/2,M10.5.0/3';
 
-    showStatus('Config chargée', false);
+    showStatus('Config loaded', false);
   } catch (e) {
-    showStatus('Erreur fetch: ' + e, true);
+    showStatus('Fetch error: ' + e, true);
   }
 }
 
@@ -84,15 +84,15 @@ async function saveConfig() {
     });
     const j = await res.json();
     if (res.ok && j.ok) {
-      showStatus('Config sauvegardée', false);
+      showStatus('Config saved', false);
       document.getElementById('admin_pass').value = '';
       document.getElementById('wifi_pass').value = '';
       document.getElementById('mqtt_pass').value = '';
     } else {
-      showStatus('Erreur sauvegarde', true);
+      showStatus('Save error', true);
     }
   } catch (e) {
-    showStatus('Erreur POST: ' + e, true);
+    showStatus('POST error: ' + e, true);
   }
 }
 
@@ -111,7 +111,7 @@ document.getElementById('btnReload').addEventListener('click', () => {
 });
 
 async function rebootDevice() {
-  if (!confirm('Êtes-vous sûr de vouloir redémarrer l\'appareil ?')) {
+  if (!confirm('Are you sure you want to reboot the device?')) {
     return;
   }
   try {
@@ -120,12 +120,12 @@ async function rebootDevice() {
       headers: {'Content-Type': 'application/json'}
     });
     if (res.ok) {
-      showStatus('Redémarrage en cours...', false);
+      showStatus('Rebooting...', false);
     } else {
-      showStatus('Erreur redémarrage: ' + res.status, true);
+      showStatus('Reboot error: ' + res.status, true);
     }
   } catch (e) {
-    showStatus('Erreur: ' + e, true);
+    showStatus('Error: ' + e, true);
   }
 }
 
@@ -138,12 +138,12 @@ document.getElementById('btnMqttTest').addEventListener('click', async () => {
   try {
     const res = await fetch('/api/mqtt/test', {method: 'POST'});
     if (res.ok) {
-      showStatus('MQTT test réussi', false);
+      showStatus('MQTT test succeeded', false);
     } else {
-      showStatus('MQTT test échoué: ' + res.status, true);
+      showStatus('MQTT test failed: ' + res.status, true);
     }
   } catch (e) {
-    showStatus('Erreur MQTT: ' + e, true);
+    showStatus('MQTT error: ' + e, true);
   }
 });
 
