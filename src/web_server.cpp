@@ -142,6 +142,22 @@ void startWebServer()
                   }
               });
 
+    server.on("/api/reboot", HTTP_POST, [](AsyncWebServerRequest *request)
+              {
+        const char *adminUser = ConfigManager::instance().getAdminUser();
+        const char *adminPass = ConfigManager::instance().getAdminPass();
+        if (!request->authenticate(adminUser, adminPass))
+        {
+            Serial.println("[WEB][AUTH] /api/reboot POST non autorisé");
+            return request->requestAuthentication();
+        }
+
+        Serial.println("[WEB] Redémarrage demandé...");
+        request->send(200, "application/json; charset=utf-8", "{\"ok\":true}");
+        delay(500);
+        ESP.restart();
+    });
+
     server.begin();
     Serial.println("[WEB] Serveur Web démarré.");
 }

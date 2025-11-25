@@ -94,6 +94,29 @@ document.getElementById('btnReload').addEventListener('click', () => {
   fetchConfig();
 });
 
+async function rebootDevice() {
+  if (!confirm('Êtes-vous sûr de vouloir redémarrer l\'appareil ?')) {
+    return;
+  }
+  try {
+    const res = await fetch('/api/reboot', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'}
+    });
+    if (res.ok) {
+      showStatus('Redémarrage en cours...', false);
+    } else {
+      showStatus('Erreur redémarrage: ' + res.status, true);
+    }
+  } catch (e) {
+    showStatus('Erreur: ' + e, true);
+  }
+}
+
+document.getElementById('btnReboot').addEventListener('click', () => {
+  rebootDevice();
+});
+
 function sendConfigPing() {
   fetch('/ping', {
     method: 'POST',
