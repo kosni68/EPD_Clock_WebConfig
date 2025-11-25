@@ -9,3 +9,5 @@ bool isApModeActive();
 // Simple in-memory log buffer (for web UI)
 void appendLog(const char *msg);
 String getLogs();
+// Return latest metrics as a JSON object string (without enclosing braces)
+String getLatestMetricsJson();

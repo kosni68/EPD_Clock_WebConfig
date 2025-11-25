@@ -125,6 +125,62 @@ void startWebServer()
         request->send(200, "text/plain; charset=utf-8", logs);
     });
 
+    // Combined dashboard endpoint: returns metrics + logs. Also serves as a ping (updates interactive touch)
+    server.on("/api/dashboard", HTTP_POST, [](AsyncWebServerRequest *request)
+              {
+        // Update interactive ping (acts like /ping)
+        interactiveLastTouchMs.store(millis());
+
+        Serial.println("[WEB] POST /api/dashboard");
+        // metrics
+        String metricsJson = getLatestMetricsJson();
+        // logs (escape for JSON)
+        String logs = getLogs();
+        String logsEscaped;
+        logsEscaped.reserve(logs.length() * 2 + 10);
+        for (size_t i = 0; i < logs.length(); i++) {
+            char c = logs.charAt(i);
+            if (c == '"') logsEscaped += "\\\"";
+            else if (c == '\\') logsEscaped += "\\\\";
+            else if (c == '\n') logsEscaped += "\\n";
+            else if (c == '\r') logsEscaped += "\\r";
+            else logsEscaped += c;
+        }
+
+        String json = "{";
+        json += "\"ok\":true,";
+        json += "\"metrics\":{" + metricsJson + "},";
+        json += "\"logs\":\"" + logsEscaped + "\"";
+        json += "}";
+
+        request->send(200, "application/json; charset=utf-8", json);
+    });
+
+    // Allow GET as well for simple polling (no auth)
+    server.on("/api/dashboard", HTTP_GET, [](AsyncWebServerRequest *request)
+              {
+        interactiveLastTouchMs.store(millis());
+        Serial.println("[WEB] GET /api/dashboard");
+        String metricsJson = getLatestMetricsJson();
+        String logs = getLogs();
+        String logsEscaped;
+        logsEscaped.reserve(logs.length() * 2 + 10);
+        for (size_t i = 0; i < logs.length(); i++) {
+            char c = logs.charAt(i);
+            if (c == '"') logsEscaped += "\\\"";
+            else if (c == '\\') logsEscaped += "\\\\";
+            else if (c == '\n') logsEscaped += "\\n";
+            else if (c == '\r') logsEscaped += "\\r";
+            else logsEscaped += c;
+        }
+        String json = "{";
+        json += "\"ok\":true,";
+        json += "\"metrics\":{" + metricsJson + "},";
+        json += "\"logs\":\"" + logsEscaped + "\"";
+        json += "}";
+        request->send(200, "application/json; charset=utf-8", json);
+    });
+
     server.on("/api/config", HTTP_POST,
               [](AsyncWebServerRequest *request) {},
               nullptr,

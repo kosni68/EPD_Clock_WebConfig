@@ -10,5 +10,55 @@
   <h2>EPD Clock - Dashboard</h2>
   <a href="/config.html"><button>Configurer l'appareil</button></a>
   <p>L’affichage e-paper montre l’heure, la date, la température et l’humidité.</p>
+  <hr>
+  <h3>Mesures</h3>
+  <canvas id="chart" width="600" height="200" style="max-width:100%;"></canvas>
+  <div style="margin-top:8px; font-size:13px; color:#333;">Dernières logs :</div>
+  <pre id="dashLogs" style="white-space:pre-wrap;max-height:200px;overflow:auto;border:1px solid #ccc;padding:8px;background:#f9f9f9;font-size:12px;">Chargement...</pre>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const ctx = document.getElementById('chart').getContext('2d');
+    const maxPoints = 60;
+    const data = {
+      labels: [],
+      datasets: [
+        { label: 'Temp (°C)', data: [], borderColor: 'rgb(255,99,132)', fill: false },
+        { label: 'Hum (%)', data: [], borderColor: 'rgb(54,162,235)', fill: false },
+        { label: 'Battery (mV)', data: [], borderColor: 'rgb(75,192,192)', fill: false }
+      ]
+    };
+    const chart = new Chart(ctx, { type: 'line', data: data, options: { animation: false, scales: { x: { display: true } } } });
+
+    async function pollDashboard() {
+      try {
+        const res = await fetch('/api/dashboard', { method: 'POST' });
+        if (!res.ok) return;
+        const j = await res.json();
+        if (!j.ok) return;
+        const m = j.metrics;
+        const logs = j.logs || '';
+
+        const label = m.time || new Date().toLocaleTimeString();
+        // push data
+        data.labels.push(label);
+        data.datasets[0].data.push(m.temp);
+        data.datasets[1].data.push(m.humidity);
+        data.datasets[2].data.push(m.battery_mv);
+        // trim
+        while (data.labels.length > maxPoints) { data.labels.shift(); data.datasets.forEach(ds=>ds.data.shift()); }
+        chart.update();
+
+        const pre = document.getElementById('dashLogs');
+        pre.innerText = logs;
+        pre.scrollTop = pre.scrollHeight;
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    setInterval(pollDashboard, 1000);
+    pollDashboard();
+  </script>
 </body>
 </html>

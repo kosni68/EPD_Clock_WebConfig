@@ -131,18 +131,28 @@ document.getElementById('btnMqttTest').addEventListener('click', async () => {
   }
 });
 
-// Auto-refresh logs every 2 seconds
-async function refreshLogs() {
+// Auto-refresh logs and act as ping using the unified /api/dashboard endpoint
+async function refreshLogsAndPing() {
   const pre = document.getElementById('logOutput');
   try {
-    const res = await fetch('/api/logs');
+    const res = await fetch('/api/dashboard');
     if (res.ok) {
-      const txt = await res.text();
-      // Only update if content changed (reduce flickering)
-      if (pre.innerText !== txt) {
-        pre.innerText = txt;
-        // Auto-scroll to bottom
-        pre.scrollTop = pre.scrollHeight;
+      const j = await res.json();
+      if (j && j.ok) {
+        if (pre && j.logs !== undefined) {
+          // Only update if content changed (reduce flickering)
+          if (pre.innerText !== j.logs) {
+            pre.innerText = j.logs;
+            pre.scrollTop = pre.scrollHeight;
+          }
+        }
+        // Optionally reflect ping status briefly
+        const statusEl = document.getElementById('status');
+        if (statusEl) {
+          statusEl.innerText = 'Device reachable';
+          statusEl.style.color = 'green';
+          setTimeout(() => { statusEl.innerText = ''; }, 1500);
+        }
       }
     }
   } catch (e) {
@@ -150,15 +160,7 @@ async function refreshLogs() {
   }
 }
 
-setInterval(refreshLogs, 2000);
-refreshLogs(); // initial call
-
-function sendConfigPing() {
-  fetch('/ping', {
-    method: 'POST',
-    body: new URLSearchParams({page: 'config'})
-  });
-}
-setInterval(sendConfigPing, 10000);
+setInterval(refreshLogsAndPing, 2000);
+refreshLogsAndPing(); // initial call
 
 fetchConfig();

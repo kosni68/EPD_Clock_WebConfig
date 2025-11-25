@@ -52,6 +52,24 @@ static void epdDraw();
 static void goDeepSleep();
 static void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &batteryMv);
 static void syncRtcFromNtpIfPossible();
+// Latest metrics snapshot (kept for dashboard polling)
+static float latest_tempC = 0.0f;
+static float latest_humidity = 0.0f;
+static int latest_batteryMv = 0;
+static String latest_time_str = "";
+static String latest_date_str = "";
+
+String getLatestMetricsJson()
+{
+    // Build a compact JSON object string for metrics
+    String s = "";
+    s += "\"temp\":" + String(latest_tempC, 2) + ",";
+    s += "\"humidity\":" + String(latest_humidity, 2) + ",";
+    s += "\"battery_mv\":" + String(latest_batteryMv) + ",";
+    s += "\"time\":\"" + latest_time_str + "\",";
+    s += "\"date\":\"" + latest_date_str + "\"";
+    return s;
+}
 
 static void goDeepSleep()
 {
@@ -154,6 +172,13 @@ static void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct,
     humidityPct = hum.relative_humidity;
     tmp = String(tempC, 1);
     hum2 = String(humidityPct, 1);
+
+    // update latest metrics snapshot for dashboard
+    latest_tempC = tempC;
+    latest_humidity = humidityPct;
+    latest_batteryMv = batteryMv;
+    latest_time_str = tt;
+    latest_date_str = dateString;
 
     batteryMv = readBatteryVoltage();
     voltageSegments = map(batteryMv, 3100, 4200, 0, 5);
