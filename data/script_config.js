@@ -21,6 +21,16 @@ async function fetchConfig() {
     document.getElementById('device_name').value = json.device_name || '';
     document.getElementById('admin_user').value = json.admin_user || '';
 
+    // sensor offsets
+    if (typeof json.temp_offset_c !== 'undefined')
+      document.getElementById('temp_offset').value = json.temp_offset_c;
+    else
+      document.getElementById('temp_offset').value = 0;
+    if (typeof json.hum_offset_pct !== 'undefined')
+      document.getElementById('hum_offset').value = json.hum_offset_pct;
+    else
+      document.getElementById('hum_offset').value = 0;
+
     document.getElementById('tz_string').value =
       json.tz_string || 'CET-1CEST,M3.5.0/2,M10.5.0/3';
 
@@ -54,6 +64,12 @@ function gatherConfig() {
   if (ap && ap.length > 0) obj.admin_pass = ap;
 
   obj.tz_string = document.getElementById('tz_string').value || '';
+
+  // sensor offsets
+  const to = parseFloat(document.getElementById('temp_offset').value);
+  obj.temp_offset_c = isNaN(to) ? 0.0 : to;
+  const ho = parseFloat(document.getElementById('hum_offset').value);
+  obj.hum_offset_pct = isNaN(ho) ? 0.0 : ho;
 
   return obj;
 }

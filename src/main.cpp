@@ -48,9 +48,9 @@ String days[7] = {"SU", "MO", "TU", "WE", "TH", "FR", "SA"};
 bool interactiveMode = false;
 
 static int readBatteryVoltage();
-static void epdDraw();
+void epdDraw();
 static void goDeepSleep();
-static void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &batteryMv);
+void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &batteryMv);
 static void syncRtcFromNtpIfPossible();
 // Latest metrics snapshot (kept for dashboard polling)
 static float latest_tempC = 0.0f;
@@ -117,7 +117,7 @@ static String getWifiStatusString()
     return String("WiFi OFF");
 }
 
-static void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &batteryMv)
+void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &batteryMv)
 {
     struct tm timeinfo;
     // Try to get local time (NTP). If unavailable, fallback to epoch-based time(NULL)
@@ -170,6 +170,11 @@ static void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct,
 
     tempC = temp.temperature;
     humidityPct = hum.relative_humidity;
+    // Apply configurable offsets (temp in °C, humidity in % points)
+    float t_off = ConfigManager::instance().getTempOffsetC();
+    float h_off = ConfigManager::instance().getHumOffsetPct();
+    tempC += t_off;
+    humidityPct += h_off;
     tmp = String(tempC, 1);
     hum2 = String(humidityPct, 1);
 
@@ -223,7 +228,7 @@ static void syncRtcFromNtpIfPossible()
                   timeinfo.tm_wday);
 }
 
-static void epdDraw()
+void epdDraw()
 {
     SPI.begin(EPD_SCK, -1, EPD_MOSI, EPD_CS);
     display.epd2.selectSPI(SPI, SPISettings(SPI_CLOCK_HZ, MSBFIRST, SPI_MODE0));

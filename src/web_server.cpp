@@ -12,6 +12,8 @@ static AsyncWebServer server(80);
 
 static void handleGetConfig(AsyncWebServerRequest *request);
 static void handlePostConfig(AsyncWebServerRequest *request, const String &body);
+extern void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &batteryMv);
+extern void epdDraw();
 
 void startWebServer()
 {
@@ -285,6 +287,18 @@ static void handlePostConfig(AsyncWebServerRequest *request, const String &body)
     if (okUpdate)
     {
         Serial.println("[WEB] Configuration mise à jour (sauvegarde différée).");
+        // Apply changes immediately: re-read sensors and refresh display so offsets take effect
+        {
+            float tmpT = 0.0f, tmpH = 0.0f;
+            int batt = 0;
+            // readTimeAndSensorAndPrepareStrings updates latest_* snapshot
+            readTimeAndSensorAndPrepareStrings(tmpT, tmpH, batt);
+            // If the device is in interactive mode, refresh the EPD now
+            extern bool interactiveMode;
+            if (interactiveMode) {
+                epdDraw();
+            }
+        }
         request->send(200, "application/json; charset=utf-8", "{\"ok\":true}");
     }
     else

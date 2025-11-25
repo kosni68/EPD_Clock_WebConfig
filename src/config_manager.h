@@ -33,6 +33,9 @@ struct AppConfig
     // ---- Mesure ----
     uint32_t measure_interval_ms;
     float measure_offset_cm;
+    // ---- Offsets capteurs ----
+    float temp_offset_c;    // temperature offset in degrees Celsius
+    float hum_offset_pct;   // humidity offset in percent points
 
     // ---- Stabilisation / filtre ----
     float avg_alpha;          // 0..1
@@ -73,6 +76,10 @@ public:
     uint16_t getMedianSampleDelayMs();
     float getFilterMinCm();
     float getFilterMaxCm();
+
+    // Offsets
+    float getTempOffsetC();
+    float getHumOffsetPct();
 
     bool isMQTTEnabled();
     const char *getAdminUser();

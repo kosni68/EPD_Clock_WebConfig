@@ -142,6 +142,9 @@ bool ConfigManager::loadFromPreferences()
 
     config_.measure_interval_ms = prefs.getUInt("meas_int_ms", 1000);
     config_.measure_offset_cm = prefs.getFloat("meas_off_cm", 0.0f);
+    // sensor offsets (new)
+    config_.temp_offset_c = prefs.getFloat("temp_off_c", 0.0f);
+    config_.hum_offset_pct = prefs.getFloat("hum_off_pct", 0.0f);
 
     config_.avg_alpha = prefs.getFloat("avg_alpha", 0.25f);
     config_.median_n = prefs.getUShort("median_n", 5);
@@ -196,6 +199,8 @@ bool ConfigManager::save()
 
     prefs.putUInt("meas_int_ms", config_.measure_interval_ms);
     prefs.putFloat("meas_off_cm", config_.measure_offset_cm);
+    prefs.putFloat("temp_off_c", config_.temp_offset_c);
+    prefs.putFloat("hum_off_pct", config_.hum_offset_pct);
     prefs.putFloat("avg_alpha", config_.avg_alpha);
     prefs.putUShort("median_n", config_.median_n);
     prefs.putUShort("median_delay_ms", config_.median_delay_ms);
@@ -234,6 +239,8 @@ String ConfigManager::toJsonString()
 
     doc["measure_interval_ms"] = config_.measure_interval_ms;
     doc["measure_offset_cm"] = config_.measure_offset_cm;
+    doc["temp_offset_c"] = config_.temp_offset_c;
+    doc["hum_offset_pct"] = config_.hum_offset_pct;
     doc["avg_alpha"] = config_.avg_alpha;
     doc["median_n"] = config_.median_n;
     doc["median_delay_ms"] = config_.median_delay_ms;
@@ -301,6 +308,10 @@ bool ConfigManager::updateFromJson(const String &json)
             config_.measure_interval_ms = doc["measure_interval_ms"];
         if (doc["measure_offset_cm"].is<float>())
             config_.measure_offset_cm = doc["measure_offset_cm"];
+        if (doc["temp_offset_c"].is<float>())
+            config_.temp_offset_c = doc["temp_offset_c"];
+        if (doc["hum_offset_pct"].is<float>())
+            config_.hum_offset_pct = doc["hum_offset_pct"];
 
         if (doc["avg_alpha"].is<float>())
             config_.avg_alpha = doc["avg_alpha"];
@@ -395,6 +406,18 @@ float ConfigManager::getFilterMaxCm()
 {
     std::lock_guard<std::mutex> lk(mutex_);
     return config_.filter_max_cm;
+}
+
+float ConfigManager::getTempOffsetC()
+{
+    std::lock_guard<std::mutex> lk(mutex_);
+    return config_.temp_offset_c;
+}
+
+float ConfigManager::getHumOffsetPct()
+{
+    std::lock_guard<std::mutex> lk(mutex_);
+    return config_.hum_offset_pct;
 }
 
 bool ConfigManager::isMQTTEnabled()
