@@ -34,7 +34,8 @@ GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display(
     GxEPD2_154_D67(EPD_CS, EPD_DC, EPD_RST, EPD_BUSY));
 
 Adafruit_SHTC3 shtc3;
-PCF85063A rtc;
+// RTC hardware removed: use system time (NTP) only
+int sys_wday = 0;
 
 int h = 0, m = 0;
 int voltageSegments = 0;
@@ -94,29 +95,46 @@ static String getWifiStatusString()
 
 static void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &batteryMv)
 {
-    h = rtc.getHour();
-    m = rtc.getMinute();
-    if (h < 10)
-        hourStr = "0" + String(h);
-    else
-        hourStr = String(h);
+    struct tm timeinfo;
+    // Try to get local time (NTP). If unavailable, fallback to epoch-based time(NULL)
+    if (getLocalTime(&timeinfo, 1000)) {
+        h = timeinfo.tm_hour;
+        m = timeinfo.tm_min;
+        sys_wday = timeinfo.tm_wday; // 0 = Sunday
+        int day = timeinfo.tm_mday;
+        int month = timeinfo.tm_mon + 1;
+        int year = (timeinfo.tm_year + 1900) % 100; // two-digit year for display
 
-    if (m < 10)
-        minStr = "0" + String(m);
-    else
-        minStr = String(m);
+        if (h < 10)
+            hourStr = "0" + String(h);
+        else
+            hourStr = String(h);
 
-    tt = hourStr + ":" + minStr;
-    
-    int day = rtc.getDay();
-    int month = rtc.getMonth();
-    int year = rtc.getYear(); // getYear() retourne déjà les 2 derniers chiffres (0-99)
-    
-    String dayStr = (day < 10) ? "0" + String(day) : String(day);
-    String monthStr = (month < 10) ? "0" + String(month) : String(month);
-    String yearStr = (year < 10) ? "0" + String(year) : String(year);
-    
-    dateString = dayStr + "/" + monthStr + "/" + yearStr;
+        if (m < 10)
+            minStr = "0" + String(m);
+        else
+            minStr = String(m);
+
+        tt = hourStr + ":" + minStr;
+
+        String dayStr = (day < 10) ? "0" + String(day) : String(day);
+        String monthStr = (month < 10) ? "0" + String(month) : String(month);
+        String yearStr = (year < 10) ? "0" + String(year) : String(year);
+
+        dateString = dayStr + "/" + monthStr + "/" + yearStr;
+    } else {
+        // Fallback: use previous h/m values and show placeholder date
+        if (h < 10)
+            hourStr = "0" + String(h);
+        else
+            hourStr = String(h);
+        if (m < 10)
+            minStr = "0" + String(m);
+        else
+            minStr = String(m);
+        tt = hourStr + ":" + minStr;
+        dateString = "--/--/--";
+    }
 
     sensors_event_t hum, temp;
     bool ok = shtc3.getEvent(&hum, &temp);
@@ -167,16 +185,8 @@ static void syncRtcFromNtpIfPossible()
         return;
     }
 
-    // Mise à l'heure de la RTC (heure locale déjà corrigée été/hiver)
-    rtc.setTime(timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
-    // setDate attend (weekday, day, month, yr) où yr est l'année complète
-    // Le RTC stocke l'année comme offset depuis 1970 dans un registre 8-bit
-    rtc.setDate(timeinfo.tm_wday,
-                timeinfo.tm_mday,
-                timeinfo.tm_mon + 1,
-                timeinfo.tm_year + 1900);
-
-    Serial.printf("[RTC] RTC réglée sur %02d:%02d:%02d %02d/%02d/%04d (wday=%d)\n",
+    // System time (NTP) is configured; no hardware RTC used anymore
+    Serial.printf("[NTP] Heure système obtenue %02d:%02d:%02d %02d/%02d/%04d (wday=%d)\n",
                   timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec,
                   timeinfo.tm_mday, timeinfo.tm_mon + 1, timeinfo.tm_year + 1900,
                   timeinfo.tm_wday);
@@ -244,7 +254,7 @@ static void epdDraw()
 
         display.setTextColor(GxEPD_WHITE);
         display.setCursor(156, 110);
-        display.print(days[rtc.getWeekday()]);
+        display.print(days[sys_wday]);
 
         display.setFont(&DejaVu_Sans_Condensed_Bold_18);
         display.setCursor(27, 76);
@@ -288,7 +298,6 @@ void setup()
     delay(10);
 
     Wire.begin(I2C_SDA, I2C_SCL);
-    rtc.begin();
     shtc3.begin();
 
     if (!ConfigManager::instance().begin())
