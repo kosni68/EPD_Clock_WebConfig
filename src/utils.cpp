@@ -3,6 +3,35 @@
 #include "config_manager.h"
 #include <WiFi.h>
 
+// Simple circular log buffer
+static const int LOG_LINES = 200;
+static String logLines[LOG_LINES];
+static int logIndex = 0;
+static int logCount = 0;
+
+void appendLog(const char *msg)
+{
+    // store timestamp + message
+    char buf[256];
+    unsigned long ms = millis();
+    int n = snprintf(buf, sizeof(buf), "[%lu] %s", ms, msg);
+    logLines[logIndex] = String(buf);
+    logIndex = (logIndex + 1) % LOG_LINES;
+    if (logCount < LOG_LINES) logCount++;
+}
+
+String getLogs()
+{
+    String out = "";
+    int start = (logIndex - logCount + LOG_LINES) % LOG_LINES;
+    for (int i = 0; i < logCount; i++) {
+        int idx = (start + i) % LOG_LINES;
+        out += logLines[idx];
+        out += '\n';
+    }
+    return out;
+}
+
 bool connectWiFiShort(uint32_t timeoutMs)
 {
     if (WiFi.status() == WL_CONNECTED)

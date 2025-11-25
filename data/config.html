@@ -28,6 +28,7 @@
     User: <input id="mqtt_user"><br>
     Pass: <input id="mqtt_pass" type="password" placeholder="laisser vide pour ne pas changer"><br>
     Topic: <input id="mqtt_topic" placeholder="epdclock/measure"><br>
+    <button id="btnMqttTest">Test MQTT</button>
   </section>
 
   <hr>
@@ -67,6 +68,13 @@
   <button id="btnReload">Recharger</button>
   <button id="btnReboot" style="background-color: #ff6b6b; color: white;">Redémarrer</button>
   <div id="status"></div>
+
+  <hr>
+
+  <section>
+    <h3>Logs</h3>
+    <pre id="logOutput" style="white-space:pre-wrap;max-height:400px;overflow:auto;border:1px solid #ccc;padding:8px;margin-top:8px;background:#f5f5f5;font-size:12px;">Chargement...</pre>
+  </section>
 
   <script src="/script_config.js"></script>
 </body>

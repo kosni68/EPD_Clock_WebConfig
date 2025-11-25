@@ -117,6 +117,42 @@ document.getElementById('btnReboot').addEventListener('click', () => {
   rebootDevice();
 });
 
+document.getElementById('btnMqttTest').addEventListener('click', async () => {
+  showStatus('Testing MQTT...', false);
+  try {
+    const res = await fetch('/api/mqtt/test', {method: 'POST'});
+    if (res.ok) {
+      showStatus('MQTT test réussi', false);
+    } else {
+      showStatus('MQTT test échoué: ' + res.status, true);
+    }
+  } catch (e) {
+    showStatus('Erreur MQTT: ' + e, true);
+  }
+});
+
+// Auto-refresh logs every 2 seconds
+async function refreshLogs() {
+  const pre = document.getElementById('logOutput');
+  try {
+    const res = await fetch('/api/logs');
+    if (res.ok) {
+      const txt = await res.text();
+      // Only update if content changed (reduce flickering)
+      if (pre.innerText !== txt) {
+        pre.innerText = txt;
+        // Auto-scroll to bottom
+        pre.scrollTop = pre.scrollHeight;
+      }
+    }
+  } catch (e) {
+    // silently ignore fetch errors during auto-refresh
+  }
+}
+
+setInterval(refreshLogs, 2000);
+refreshLogs(); // initial call
+
 function sendConfigPing() {
   fetch('/ping', {
     method: 'POST',

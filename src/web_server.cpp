@@ -2,6 +2,7 @@
 #include "config.h"
 #include "config_manager.h"
 #include "utils.h"
+#include "mqtt.h"
 
 #include <ESPAsyncWebServer.h>
 #include <LittleFS.h>
@@ -95,6 +96,34 @@ void startWebServer()
               {
         Serial.println("[WEB] GET /api/config");
         handleGetConfig(request); });
+
+    server.on("/api/mqtt/test", HTTP_POST, [](AsyncWebServerRequest *request)
+              {
+        const char *adminUser = ConfigManager::instance().getAdminUser();
+        const char *adminPass = ConfigManager::instance().getAdminPass();
+        if (!request->authenticate(adminUser, adminPass)) {
+            Serial.println("[WEB][AUTH] /api/mqtt/test auth required");
+            return request->requestAuthentication();
+        }
+
+        Serial.println("[WEB] POST /api/mqtt/test (attempting test publish)");
+        bool ok = publishMQTT_reading(0.0f, 0.0f, 0);
+        if (ok) request->send(200, "application/json; charset=utf-8", "{\"ok\":true}");
+        else request->send(500, "application/json; charset=utf-8", "{\"ok\":false}");
+    });
+
+    server.on("/api/logs", HTTP_GET, [](AsyncWebServerRequest *request)
+              {
+        const char *adminUser = ConfigManager::instance().getAdminUser();
+        const char *adminPass = ConfigManager::instance().getAdminPass();
+        if (!request->authenticate(adminUser, adminPass)) {
+            Serial.println("[WEB][AUTH] /api/logs auth required");
+            return request->requestAuthentication();
+        }
+        Serial.println("[WEB] GET /api/logs");
+        String logs = getLogs();
+        request->send(200, "text/plain; charset=utf-8", logs);
+    });
 
     server.on("/api/config", HTTP_POST,
               [](AsyncWebServerRequest *request) {},
