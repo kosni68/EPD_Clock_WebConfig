@@ -36,6 +36,8 @@ GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display(
 Adafruit_SHTC3 shtc3;
 // RTC hardware removed: use system time (NTP) only
 int sys_wday = 0;
+// When true, epdDraw() will render a small sleep indicator overlay (e.g. "Zz")
+bool showSleepIndicator = false;
 
 int h = 0, m = 0;
 int voltageSegments = 0;
@@ -57,7 +59,11 @@ static void goDeepSleep()
     uint32_t sleepSeconds = cfg.deepsleep_interval_s;
     if (sleepSeconds == 0)
         sleepSeconds = 60;
-
+    // Request epdDraw to render the current page with a sleep indicator overlay
+    showSleepIndicator = true;
+    epdDraw();
+    showSleepIndicator = false;
+    // hibernate display after rendering
     display.hibernate();
     digitalWrite(EPD_PWR, HIGH);
 
@@ -273,6 +279,15 @@ static void epdDraw()
         // Bas de l'écran (y ≈ 195 sur 200px de hauteur)
         display.setCursor(40, 200);
         display.print(wifiStr);
+
+        // If requested, draw a small sleep indicator overlay in the top-left corner
+        if (showSleepIndicator) {
+            display.setFont(&DejaVu_Sans_Condensed_Bold_15);
+            display.setTextColor(GxEPD_WHITE);
+            display.fillRect(0, 0, 28, 18, GxEPD_BLACK);
+            display.setCursor(4, 14);
+            display.print("Zz");
+        }
 
     } while (display.nextPage());
 }
