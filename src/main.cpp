@@ -107,7 +107,16 @@ static void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct,
         minStr = String(m);
 
     tt = hourStr + ":" + minStr;
-    dateString = String(rtc.getDay()) + "/" + String(rtc.getMonth()) + "/" + String(rtc.getYear() - 2000);
+    
+    int day = rtc.getDay();
+    int month = rtc.getMonth();
+    int year = rtc.getYear(); // getYear() retourne déjà les 2 derniers chiffres (0-99)
+    
+    String dayStr = (day < 10) ? "0" + String(day) : String(day);
+    String monthStr = (month < 10) ? "0" + String(month) : String(month);
+    String yearStr = (year < 10) ? "0" + String(year) : String(year);
+    
+    dateString = dayStr + "/" + monthStr + "/" + yearStr;
 
     sensors_event_t hum, temp;
     bool ok = shtc3.getEvent(&hum, &temp);
@@ -160,6 +169,8 @@ static void syncRtcFromNtpIfPossible()
 
     // Mise à l'heure de la RTC (heure locale déjà corrigée été/hiver)
     rtc.setTime(timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+    // setDate attend (weekday, day, month, yr) où yr est l'année complète
+    // Le RTC stocke l'année comme offset depuis 1970 dans un registre 8-bit
     rtc.setDate(timeinfo.tm_wday,
                 timeinfo.tm_mday,
                 timeinfo.tm_mon + 1,
