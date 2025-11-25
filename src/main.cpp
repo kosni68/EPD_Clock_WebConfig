@@ -256,7 +256,10 @@ static void epdDraw()
         display.setCursor(135, 177);
         display.print(hum2);
         display.setCursor(120, 78);
-        display.print("SHTC3");
+        // Display "MQTT" if enabled, otherwise "SHTC3"
+        if (ConfigManager::instance().getConfig().mqtt_enabled) {
+            display.print("MQTT");
+        }
 
         display.setTextColor(GxEPD_WHITE);
         display.setCursor(156, 110);
@@ -279,6 +282,15 @@ static void epdDraw()
         // Bas de l'écran (y ≈ 195 sur 200px de hauteur)
         display.setCursor(40, 200);
         display.print(wifiStr);
+
+        // Display device name at the top-right area (replaces VOLOS from bitmap)
+        const char *devName = ConfigManager::instance().getConfig().device_name;
+        if (devName && strlen(devName) > 0) {
+            display.setFont(&DejaVu_Sans_Condensed_Bold_18);
+            display.setTextColor(GxEPD_BLACK);
+            display.setCursor(40, 25);
+            display.print(devName);
+        }
 
         // If requested, draw a small sleep indicator overlay in the top-left corner
         if (showSleepIndicator) {
