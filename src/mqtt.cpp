@@ -29,14 +29,14 @@ bool publishMQTT_reading(float temperatureC, float humidityPct, int batteryMv)
 
     if (!cfg.mqtt_enabled)
     {
-        DEBUG_PRINT("[MQTT] MQTT désactivé, publication ignorée.");
+        DEBUG_PRINT("[MQTT] MQTT disabled, skipping publish.");
         mqttBusy.store(false);
         return true;
     }
 
     if (WiFi.status() != WL_CONNECTED)
     {
-        DEBUG_PRINT("[MQTT] WiFi non connecté !");
+        DEBUG_PRINT("[MQTT] Wi-Fi not connected!");
         mqttBusy.store(false);
         return false;
     }
@@ -47,7 +47,7 @@ bool publishMQTT_reading(float temperatureC, float humidityPct, int batteryMv)
     if (clientId.isEmpty())
         clientId = String("EPDClock-") + String((uint32_t)ESP.getEfuseMac(), HEX);
 
-    DEBUG_PRINTF("[MQTT] Connexion à %s:%d en tant que %s\n",
+    DEBUG_PRINTF("[MQTT] Connecting to %s:%d as %s\n",
                  cfg.mqtt_host, cfg.mqtt_port, clientId.c_str());
 
     bool connected = false;
@@ -58,7 +58,7 @@ bool publishMQTT_reading(float temperatureC, float humidityPct, int batteryMv)
 
     if (!connected)
     {
-        DEBUG_PRINTF("[MQTT] Connexion échouée, state=%d\n", mqttClient.state());
+        DEBUG_PRINTF("[MQTT] Connection failed, state=%d\n", mqttClient.state());
         mqttBusy.store(false);
         return false;
     }
@@ -68,7 +68,7 @@ bool publishMQTT_reading(float temperatureC, float humidityPct, int batteryMv)
              "{\"temperature_c\":%.2f,\"humidity_pct\":%.2f,\"battery_mv\":%d}",
              temperatureC, humidityPct, batteryMv);
 
-    DEBUG_PRINTF("[MQTT] Publish sur %s: %s\n", cfg.mqtt_topic, payload);
+    DEBUG_PRINTF("[MQTT] Publish on %s: %s\n", cfg.mqtt_topic, payload);
 
     ok = mqttClient.publish(cfg.mqtt_topic, payload);
     mqttClient.loop();

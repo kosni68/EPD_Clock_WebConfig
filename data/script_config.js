@@ -1,3 +1,16 @@
+function setSelectValueOrAdd(selectEl, value) {
+  if (!selectEl) return;
+  const target = value || '';
+  const exists = Array.from(selectEl.options).some(opt => opt.value === target);
+  if (!exists && target.length) {
+    const opt = document.createElement('option');
+    opt.value = target;
+    opt.textContent = `${target} (custom)`;
+    selectEl.appendChild(opt);
+  }
+  selectEl.value = target;
+}
+
 async function fetchConfig() {
   try {
     const res = await fetch('/api/config', {cache: 'no-store'});
@@ -31,8 +44,10 @@ async function fetchConfig() {
     else
       document.getElementById('hum_offset').value = 0;
 
-    document.getElementById('tz_string').value =
-      json.tz_string || 'CET-1CEST,M3.5.0/2,M10.5.0/3';
+    setSelectValueOrAdd(
+      document.getElementById('tz_string'),
+      json.tz_string || 'CET-1CEST,M3.5.0/2,M10.5.0/3'
+    );
 
     showStatus('Config loaded', false);
   } catch (e) {
@@ -155,14 +170,14 @@ async function scanWifi() {
   if (!btn || !select) return;
   btn.disabled = true;
   if (status) {
-    status.innerText = 'Scan en cours...';
+    status.innerText = 'Scanning...';
     status.style.color = '#555';
   }
   try {
     const res = await fetch('/api/wifi/scan');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const j = await res.json();
-    if (!j.ok || !Array.isArray(j.aps)) throw new Error('Réponse inattendue');
+    if (!j.ok || !Array.isArray(j.aps)) throw new Error('Unexpected response');
 
     // Keep strongest entry per SSID
     const bestBySsid = {};
@@ -175,7 +190,7 @@ async function scanWifi() {
     });
     const aps = Object.values(bestBySsid).sort((a, b) => (b.rssi || 0) - (a.rssi || 0));
 
-    select.innerHTML = '<option value=\"\">-- sélectionner un réseau scanné --</option>';
+    select.innerHTML = '<option value=\"\">-- select a scanned network --</option>';
     aps.forEach(ap => {
       const opt = document.createElement('option');
       opt.value = ap.ssid;
@@ -183,12 +198,12 @@ async function scanWifi() {
       select.appendChild(opt);
     });
     if (status) {
-      status.innerText = aps.length ? `${aps.length} réseau(x) trouvé(s)` : 'Aucun réseau trouvé';
+      status.innerText = aps.length ? `${aps.length} network(s) found` : 'No networks found';
       status.style.color = aps.length ? 'green' : 'red';
     }
   } catch (e) {
     if (status) {
-      status.innerText = 'Scan échec: ' + e.message;
+      status.innerText = 'Scan failed: ' + e.message;
       status.style.color = 'red';
     }
   } finally {

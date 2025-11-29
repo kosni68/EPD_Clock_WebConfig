@@ -50,7 +50,7 @@ void startWebServer()
         } else {
             request->send(200, "text/html; charset=utf-8",
                           "<!doctype html><html><body><h2>EPD Clock</h2>"
-                          "<p><a href=\"/config.html\">Configuration</a></p></body></html>");
+                          "<p><a href=\"/config.html\">Settings</a></p></body></html>");
         } });
 
     server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -222,18 +222,18 @@ void startWebServer()
               {
                   const char *adminUser = ConfigManager::instance().getAdminUser();
                   const char *adminPass = ConfigManager::instance().getAdminPass();
-                      if (!request->authenticate(adminUser, adminPass))
-                      {
-                          Serial.println("[WEB][AUTH] /api/config POST not authorized");
-                          request->requestAuthentication();
-                          return;
-                      }
+                  if (!request->authenticate(adminUser, adminPass))
+                  {
+                      Serial.println("[WEB][AUTH] /api/config POST not authorized");
+                      request->requestAuthentication();
+                      return;
+                  }
 
                   if (index == 0)
                   {
                       if (total > 4096)
                       {
-                          Serial.printf("[WEB] Payload trop gros (%u)\n", (unsigned)total);
+                          Serial.printf("[WEB] Payload too large (%u)\n", (unsigned)total);
                           request->send(413, "application/json; charset=utf-8",
                                         "{\"ok\":false,\"err\":\"payload too large\"}");
                           return;
@@ -251,7 +251,7 @@ void startWebServer()
 
                   if (index + len == total)
                   {
-                      Serial.printf("[WEB] Corps JSON complet reçu (%u octets)\n", (unsigned)total);
+                      Serial.printf("[WEB] Full JSON body received (%u bytes)\n", (unsigned)total);
                       if (body)
                       {
                           handlePostConfig(request, *body);
@@ -278,7 +278,7 @@ void startWebServer()
     });
 
     server.begin();
-    Serial.println("[WEB] Serveur Web démarré.");
+    Serial.println("[WEB] Web server started.");
 }
 
 static void handleGetConfig(AsyncWebServerRequest *request)
@@ -287,7 +287,7 @@ static void handleGetConfig(AsyncWebServerRequest *request)
     const char *adminPass = ConfigManager::instance().getAdminPass();
     if (!request->authenticate(adminUser, adminPass))
     {
-        Serial.println("[WEB][AUTH] /api/config GET non autorisé");
+        Serial.println("[WEB][AUTH] /api/config GET not authorized");
         return request->requestAuthentication();
     }
 
@@ -298,19 +298,19 @@ static void handleGetConfig(AsyncWebServerRequest *request)
 
 static void handlePostConfig(AsyncWebServerRequest *request, const String &body)
 {
-    Serial.println("[WEB] POST /api/config reçu");
+    Serial.println("[WEB] POST /api/config received");
 
     const char *adminUser = ConfigManager::instance().getAdminUser();
     const char *adminPass = ConfigManager::instance().getAdminPass();
     if (!request->authenticate(adminUser, adminPass))
     {
-        Serial.println("[WEB][AUTH] /api/config POST non autorisé (2nd check)");
+        Serial.println("[WEB][AUTH] /api/config POST not authorized (2nd check)");
         return request->requestAuthentication();
     }
 
     if (body.isEmpty())
     {
-        Serial.println("[WEB][ERR] Corps JSON vide !");
+        Serial.println("[WEB][ERR] Empty JSON body!");
         request->send(400, "application/json; charset=utf-8", "{\"ok\":false,\"err\":\"empty body\"}");
         return;
     }
@@ -318,7 +318,7 @@ static void handlePostConfig(AsyncWebServerRequest *request, const String &body)
     bool okUpdate = ConfigManager::instance().updateFromJson(body);
     if (okUpdate)
     {
-        Serial.println("[WEB] Configuration mise à jour (sauvegarde différée).");
+        Serial.println("[WEB] Configuration updated (deferred save).");
         // Apply changes immediately: re-read sensors and refresh display so offsets take effect
         {
             float tmpT = 0.0f, tmpH = 0.0f;
@@ -335,7 +335,7 @@ static void handlePostConfig(AsyncWebServerRequest *request, const String &body)
     }
     else
     {
-        Serial.println("[WEB][ERR] Échec de la mise à jour JSON !");
+        Serial.println("[WEB][ERR] JSON update failed!");
         request->send(400, "application/json; charset=utf-8", "{\"ok\":false}");
     }
 }

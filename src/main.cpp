@@ -81,7 +81,7 @@ static void goDeepSleep()
     showSleepIndicator = true;
     epdDraw();
     showSleepIndicator = false;
-    // hibernate display after rendering
+    // Hibernate display after rendering
     display.hibernate();
     digitalWrite(EPD_PWR, HIGH);
 
@@ -92,7 +92,7 @@ static void goDeepSleep()
     delay(5);
     esp_sleep_enable_timer_wakeup((uint64_t)sleepSeconds * 1000000ULL);
 
-    Serial.printf("[POWER] Deep sleep pour %lu s\n", (unsigned long)sleepSeconds);
+    Serial.printf("[POWER] Deep sleep for %lu s\n", (unsigned long)sleepSeconds);
     esp_deep_sleep_start();
 }
 
@@ -100,20 +100,20 @@ static String getWifiStatusString()
 {
     wifi_mode_t mode = WiFi.getMode();
 
-    // Si on a une connexion STA valide
+    // If STA connection is active
     if ((mode == WIFI_MODE_STA || mode == WIFI_MODE_APSTA) &&
         WiFi.status() == WL_CONNECTED)
     {
         return String("STA ") + WiFi.localIP().toString();
     }
 
-    // Sinon, si un AP est actif
+    // If an AP is active
     if (mode == WIFI_MODE_AP || mode == WIFI_MODE_APSTA)
     {
         return String("AP ") + WiFi.softAPIP().toString();
     }
 
-    // Sinon, rien d’actif
+    // Otherwise Wi-Fi is off
     return String("WiFi OFF");
 }
 
@@ -121,7 +121,8 @@ void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &b
 {
     struct tm timeinfo;
     // Try to get local time (NTP). If unavailable, fallback to epoch-based time(NULL)
-    if (getLocalTime(&timeinfo, 1000)) {
+    if (getLocalTime(&timeinfo, 1000))
+    {
         h = timeinfo.tm_hour;
         m = timeinfo.tm_min;
         sys_wday = timeinfo.tm_wday; // 0 = Sunday
@@ -146,7 +147,9 @@ void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &b
         String yearStr = (year < 10) ? "0" + String(year) : String(year);
 
         dateString = dayStr + "/" + monthStr + "/" + yearStr;
-    } else {
+    }
+    else
+    {
         // Fallback: use previous h/m values and show placeholder date
         if (h < 10)
             hourStr = "0" + String(h);
@@ -170,7 +173,7 @@ void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &b
 
     tempC = temp.temperature;
     humidityPct = hum.relative_humidity;
-    // Apply configurable offsets (temp in °C, humidity in % points)
+    // Apply configurable offsets (temp in degC, humidity in % points)
     float t_off = ConfigManager::instance().getTempOffsetC();
     float h_off = ConfigManager::instance().getHumOffsetPct();
     tempC += t_off;
@@ -178,7 +181,7 @@ void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &b
     tmp = String(tempC, 1);
     hum2 = String(humidityPct, 1);
 
-    // update latest metrics snapshot for dashboard
+    // Update latest metrics snapshot for dashboard
     latest_tempC = tempC;
     latest_humidity = humidityPct;
     latest_batteryMv = batteryMv;
@@ -205,13 +208,13 @@ static void syncRtcFromNtpIfPossible()
     const char *tz = cfg.tz_string;
     if (!tz || strlen(tz) == 0)
     {
-        // défaut : Europe/Paris
+        // Default: Europe/Paris
         tz = "CET-1CEST,M3.5.0/2,M10.5.0/3";
     }
 
     Serial.printf("[NTP] Sync NTP (TZ=\"%s\")...\n", tz);
 
-    // Initialise SNTP + fuseau (avec heure d'été/hiver automatique)
+    // Initialize SNTP + timezone (with automatic DST handling)
     configTzTime(tz, "pool.ntp.org", "time.nist.gov", "time.google.com");
 
     struct tm timeinfo;
@@ -286,8 +289,9 @@ void epdDraw()
         display.setCursor(135, 177);
         display.print(hum2);
         display.setCursor(120, 78);
-        // Display "MQTT" if enabled, otherwise "SHTC3"
-        if (ConfigManager::instance().getConfig().mqtt_enabled) {
+        // Display "MQTT" if enabled
+        if (ConfigManager::instance().getConfig().mqtt_enabled)
+        {
             display.print("MQTT");
         }
 
@@ -329,13 +333,14 @@ void epdDraw()
             rectH = 200 - rectY;
         display.fillRect(rectX, rectY, rectW, rectH, GxEPD_WHITE);
         display.setTextColor(GxEPD_BLACK);
-        // Bottom of the screen (y ≈ 195 on a 200px tall display)
+        // Bottom of the screen (y ~= 195 on a 200px tall display)
         display.setCursor(textX, textY);
         display.print(wifiStr);
 
         // Display device name at the top-right area (replaces VOLOS from bitmap)
         const char *devName = ConfigManager::instance().getConfig().device_name;
-        if (devName && strlen(devName) > 0) {
+        if (devName && strlen(devName) > 0)
+        {
             display.setFont(&DejaVu_Sans_Condensed_Bold_18);
             int16_t nbx, nby;
             uint16_t nbw, nbh;
@@ -362,7 +367,8 @@ void epdDraw()
         }
 
         // If requested, draw a small sleep indicator overlay in the top-left corner
-        if (showSleepIndicator) {
+        if (showSleepIndicator)
+        {
             display.setFont(&DejaVu_Sans_Condensed_Bold_15);
             display.setTextColor(GxEPD_WHITE);
             display.fillRect(0, 0, 28, 18, GxEPD_BLACK);
@@ -417,7 +423,7 @@ void setup()
         bool wifiOK = connectWiFiShort(6000);
         if (wifiOK)
         {
-            // Sync system time via NTP if Wi‑Fi available (timezone aware)
+            // Sync system time via NTP if Wi-Fi available (timezone aware)
             syncRtcFromNtpIfPossible();
         }
 
@@ -439,10 +445,10 @@ void setup()
     }
     else
     {
-        // Démarrage / reset : mode interactif + serveur web
+        // Boot/reset: interactive mode + web server
         startWebServer();
 
-        // If connected to Wi‑Fi (STA mode), we can perform NTP sync
+        // If connected to Wi-Fi (STA mode), we can perform NTP sync
         if (WiFi.status() == WL_CONNECTED)
         {
             syncRtcFromNtpIfPossible();
@@ -467,11 +473,11 @@ void loop()
 
         if ((uint32_t)(now - last) > timeout)
         {
-            Serial.println("[MODE] Timeout interactif atteint.");
+            Serial.println("[MODE] Interactive timeout reached.");
 
             if (isApModeActive())
             {
-                Serial.println("[POWER] AP actif, on reste en mode interactif.");
+                Serial.println("[POWER] AP active, staying in interactive mode.");
                 interactiveLastTouchMs.store(millis());
             }
             else

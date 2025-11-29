@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Configuration - EPD Clock</title>
+  <title>Settings - EPD Clock</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <h2>Configuration - EPD Clock</h2>
+  <h2>Settings - EPD Clock</h2>
   <a href="/"><button>Back to dashboard</button></a>
 
   <section>
@@ -16,9 +16,9 @@
     SSID: <input id="wifi_ssid" placeholder="my_wifi"><br>
     Password: <input id="wifi_pass" type="password" placeholder="leave empty to keep current"><br>
     <div style="margin:6px 0;">
-      <button id="btnScanWifi" type="button">Scanner les réseaux</button>
+      <button id="btnScanWifi" type="button">Scan networks</button>
       <select id="wifi_scan_list" style="min-width:220px;">
-        <option value="">-- sélectionner un réseau scanné --</option>
+        <option value="">-- select a scanned network --</option>
       </select>
       <span id="wifi_scan_status" style="font-size:12px;color:#555;margin-left:6px;"></span>
     </div>
@@ -52,10 +52,40 @@
     <h3>Clock / Timezone</h3>
     Timezone:
     <select id="tz_string">
-      <option value="UTC0">UTC (sans heure d'été)</option>
-      <option value="CET-1CEST,M3.5.0/2,M10.5.0/3">
-        Europe/Paris (UTC+1 / UTC+2, DST auto)
-      </option>
+      <optgroup label="Fixed UTC offsets (no DST)">
+        <option value="UTC0">UTC</option>
+        <option value="UTC1">UTC-1</option>
+        <option value="UTC2">UTC-2</option>
+        <option value="UTC3">UTC-3</option>
+        <option value="UTC4">UTC-4</option>
+        <option value="UTC5">UTC-5</option>
+        <option value="UTC6">UTC-6</option>
+        <option value="UTC7">UTC-7</option>
+        <option value="UTC8">UTC-8</option>
+        <option value="UTC9">UTC-9</option>
+        <option value="UTC10">UTC-10</option>
+        <option value="UTC11">UTC-11</option>
+        <option value="UTC12">UTC-12</option>
+        <option value="UTC-1">UTC+1</option>
+        <option value="UTC-2">UTC+2</option>
+        <option value="UTC-3">UTC+3</option>
+        <option value="UTC-4">UTC+4</option>
+        <option value="UTC-5">UTC+5</option>
+        <option value="UTC-6">UTC+6</option>
+        <option value="UTC-7">UTC+7</option>
+        <option value="UTC-8">UTC+8</option>
+        <option value="UTC-9">UTC+9</option>
+        <option value="UTC-10">UTC+10</option>
+        <option value="UTC-11">UTC+11</option>
+        <option value="UTC-12">UTC+12</option>
+        <option value="UTC-13">UTC+13</option>
+        <option value="UTC-14">UTC+14</option>
+      </optgroup>
+      <optgroup label="Zones with DST">
+        <option value="CET-1CEST,M3.5.0/2,M10.5.0/3">
+          Europe/Paris (UTC+1 / UTC+2, DST auto)
+        </option>
+      </optgroup>
     </select><br>
     <small>Used to set system time via NTP, with DST handling.</small>
   </section>
@@ -69,7 +99,7 @@
     Admin password: <input id="admin_pass" type="password" placeholder="leave empty to keep current"><br>
     <hr>
     <h4>Sensor offsets</h4>
-    Temp offset (°C): <input id="temp_offset" type="number" step="0.1" value="0"><br>
+    Temp offset (degC): <input id="temp_offset" type="number" step="0.1" value="0"><br>
     Humidity offset (%): <input id="hum_offset" type="number" step="0.1" value="0"><br>
   </section>
 

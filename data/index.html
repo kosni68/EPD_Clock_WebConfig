@@ -11,7 +11,7 @@
   <a href="/config.html"><button>Configure device</button></a>
   <p>The e-paper display shows time, date, temperature and humidity.</p>
   <hr>
-  <h3>Mesures</h3>
+  <h3>Measurements</h3>
   <canvas id="chart" width="600" height="200" style="max-width:100%;"></canvas>
   <div style="margin-top:8px; font-size:13px; color:#333;">Latest logs:</div>
   <pre id="dashLogs" style="white-space:pre-wrap;max-height:200px;overflow:auto;border:1px solid #ccc;padding:8px;background:#f9f9f9;font-size:12px;">Loading...</pre>
@@ -23,7 +23,7 @@
     const data = {
       labels: [],
       datasets: [
-        { label: 'Temp (°C)', data: [], borderColor: 'rgb(255,99,132)', fill: false },
+        { label: 'Temp (degC)', data: [], borderColor: 'rgb(255,99,132)', fill: false },
         { label: 'Hum (%)', data: [], borderColor: 'rgb(54,162,235)', fill: false },
         { label: 'Battery (mV)', data: [], borderColor: 'rgb(75,192,192)', fill: false }
       ]
