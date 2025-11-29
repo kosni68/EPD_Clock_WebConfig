@@ -14,7 +14,7 @@ ESP32-S3 e-paper clock firmware that shows time, date, temperature, humidity, ba
 - Circular in-memory debug log exposed via HTTP
 
 ## Hardware
-- Module: Waveshare ESP32-S3 E-Paper 1.54 (V2) — https://www.waveshare.com/esp32-s3-epaper-1.54.htm
+- Module: Waveshare ESP32-S3 E-Paper 1.54 (V2) - https://www.waveshare.com/esp32-s3-epaper-1.54.htm
 - Board profile: `esp32-s3-devkitc-1` (PlatformIO target `esp32-s3-devkitc-1`)
 - Display: 1.54" GxEPD2 E-Paper (pins in `src/main.cpp`: DC=10, CS=11, RST=9, BUSY=8, PWR=6, SCK=12, MOSI=13)
 - I2C: SHTC3 on SDA=47, SCL=48
@@ -48,14 +48,14 @@ ESP32-S3 e-paper clock firmware that shows time, date, temperature, humidity, ba
 
 ## Power Behavior
 - If woken by timer: connect Wi-Fi briefly, sync NTP, read sensors, update display, publish MQTT (if enabled), then deep sleep for `deepsleep_interval_s`.
-- In interactive mode (after fresh boot): serves web UI until `interactive_timeout_ms` elapses; if not in AP mode, disconnects Wi-Fi and sleeps.
+- In interactive mode (after fresh boot): serves web UI until `interactive_timeout_min` elapses; if not in AP mode, disconnects Wi-Fi and sleeps.
 
 ## Defaults (set in `ConfigManager::applyDefaultsIfNeeded`)
 - `device_name=EPD-Clock`, `app_version=1.0.0`
 - Wi-Fi empty (must be set)
 - MQTT disabled, host `broker.local`, port 1883, topic empty
 - Admin credentials: `admin` / `admin` (change them!)
-- Deep sleep interval: 60 s; interactive timeout: 600000 ms
+- Deep sleep interval: 20 s; interactive timeout: 5 min
 - Sensor offsets: 0; NTP TZ: `CET-1CEST,M3.5.0/2,M10.5.0/3`
 
 ## LittleFS Content
@@ -67,4 +67,4 @@ pio run --target uploadfs
 ## Troubleshooting
 - If Wi-Fi STA fails, connect to the `EPD_Clock` AP and reconfigure.
 - Logs: `GET /api/logs` (auth required) or check serial output.
-- If MQTT publish fails, verify broker host/port/credentials and Wi-Fi connectivity.
+- If MQTT publish fails, verify broker host/port/credentials and Wi-Fi connectivity.

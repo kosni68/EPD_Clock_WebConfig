@@ -28,8 +28,11 @@ async function fetchConfig() {
     document.getElementById('mqtt_user').value = json.mqtt_user || '';
     document.getElementById('mqtt_topic').value = json.mqtt_topic || '';
 
-    document.getElementById('interactive_timeout_ms').value = json.interactive_timeout_ms || 600000;
-    document.getElementById('deepsleep_interval_s').value = json.deepsleep_interval_s || 60;
+    const timeoutMin = (typeof json.interactive_timeout_min !== 'undefined')
+      ? json.interactive_timeout_min
+      : (json.interactive_timeout_ms ? Math.ceil(json.interactive_timeout_ms / 60000) : 5);
+    document.getElementById('interactive_timeout_min').value = timeoutMin || 5;
+    document.getElementById('deepsleep_interval_s').value = json.deepsleep_interval_s || 20;
 
     document.getElementById('device_name').value = json.device_name || '';
     document.getElementById('admin_user').value = json.admin_user || '';
@@ -70,8 +73,9 @@ function gatherConfig() {
   if (mp && mp.length > 0) obj.mqtt_pass = mp;
   obj.mqtt_topic = document.getElementById('mqtt_topic').value;
 
-  obj.interactive_timeout_ms = parseInt(document.getElementById('interactive_timeout_ms').value) || 600000;
-  obj.deepsleep_interval_s = parseInt(document.getElementById('deepsleep_interval_s').value) || 60;
+  const timeoutMin = parseInt(document.getElementById('interactive_timeout_min').value);
+  obj.interactive_timeout_min = (timeoutMin && timeoutMin > 0) ? timeoutMin : 5;
+  obj.deepsleep_interval_s = parseInt(document.getElementById('deepsleep_interval_s').value) || 20;
 
   obj.device_name = document.getElementById('device_name').value || '';
   obj.admin_user = document.getElementById('admin_user').value || '';

@@ -76,7 +76,7 @@ static void goDeepSleep()
     const auto cfg = ConfigManager::instance().getConfig();
     uint32_t sleepSeconds = cfg.deepsleep_interval_s;
     if (sleepSeconds == 0)
-        sleepSeconds = 60;
+        sleepSeconds = 20;
     // Request epdDraw to render the current page with a sleep indicator overlay
     showSleepIndicator = true;
     epdDraw();
@@ -467,7 +467,8 @@ void loop()
 {
     if (interactiveMode)
     {
-        const uint32_t timeout = ConfigManager::instance().getConfig().interactive_timeout_ms;
+        const uint32_t timeoutMin = ConfigManager::instance().getConfig().interactive_timeout_min;
+        const uint32_t timeout = (timeoutMin ? timeoutMin : 5) * 60000UL;
         const uint32_t now = millis();
         const uint32_t last = interactiveLastTouchMs.load();
 

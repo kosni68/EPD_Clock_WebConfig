@@ -46,7 +46,7 @@ struct AppConfig
 
     // ---- Divers ----
     char device_name[DEVICE_NAME_LEN];
-    uint32_t interactive_timeout_ms;
+    uint32_t interactive_timeout_min;
     uint32_t deepsleep_interval_s;
 
     char admin_user[ADMIN_USER_LEN];
