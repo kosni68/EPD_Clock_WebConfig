@@ -108,7 +108,10 @@ void startWebServer()
         }
 
         Serial.println("[WEB] POST /api/mqtt/test (attempting test publish)");
-        bool ok = publishMQTT_reading(0.0f, 0.0f, 0);
+        float t = 0.0f, h = 0.0f;
+        int batt = 0;
+        readTimeAndSensorAndPrepareStrings(t, h, batt);
+        bool ok = publishMQTT_reading(t, h, batt);
         if (ok) request->send(200, "application/json; charset=utf-8", "{\"ok\":true}");
         else request->send(500, "application/json; charset=utf-8", "{\"ok\":false}");
     });
