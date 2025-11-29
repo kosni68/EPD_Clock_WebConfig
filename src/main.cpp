@@ -50,6 +50,7 @@ bool interactiveMode = false;
 static int readBatteryVoltage();
 void epdDraw();
 static void goDeepSleep();
+static const gpio_num_t WAKE_BUTTON = GPIO_NUM_0; // BOOT button (RTC-capable)
 void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &batteryMv);
 static void syncRtcFromNtpIfPossible();
 // Latest metrics snapshot (kept for dashboard polling)
@@ -88,6 +89,9 @@ static void goDeepSleep()
     gpio_hold_en((gpio_num_t)VBAT_PWR);
     gpio_hold_en((gpio_num_t)EPD_PWR);
     gpio_deep_sleep_hold_en();
+
+    // Wake up if BOOT button (GPIO0) is pressed (active low)
+    esp_sleep_enable_ext0_wakeup(WAKE_BUTTON, 0);
 
     delay(5);
     esp_sleep_enable_timer_wakeup((uint64_t)sleepSeconds * 1000000ULL);
@@ -396,6 +400,9 @@ void setup()
 
     pinMode(3, OUTPUT);
     digitalWrite(3, HIGH);
+
+    // BOOT button (GPIO0) used as deep-sleep wake source (active low)
+    pinMode((int)WAKE_BUTTON, INPUT_PULLUP);
 
     delay(10);
 
