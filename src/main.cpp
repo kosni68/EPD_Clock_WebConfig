@@ -309,17 +309,55 @@ void epdDraw()
         String wifiStr = getWifiStatusString();
 
         display.setFont(&DejaVu_Sans_Condensed_Bold_15); // small readable font
+        int16_t tbx, tby;
+        uint16_t tbw, tbh;
+        const int textX = 40;
+        const int textY = 200;
+        display.getTextBounds(wifiStr, textX, textY, &tbx, &tby, &tbw, &tbh);
+        int pad = 4; // small padding around text
+        int rectX = tbx - pad;
+        int rectY = tby - pad;
+        int rectW = tbw + (pad * 2);
+        int rectH = tbh + (pad * 2);
+        if (rectX < 0)
+            rectX = 0;
+        if (rectY < 0)
+            rectY = 0;
+        if (rectX + rectW > 200)
+            rectW = 200 - rectX;
+        if (rectY + rectH > 200)
+            rectH = 200 - rectY;
+        display.fillRect(rectX, rectY, rectW, rectH, GxEPD_WHITE);
         display.setTextColor(GxEPD_BLACK);
         // Bottom of the screen (y ≈ 195 on a 200px tall display)
-        display.setCursor(40, 200);
+        display.setCursor(textX, textY);
         display.print(wifiStr);
 
         // Display device name at the top-right area (replaces VOLOS from bitmap)
         const char *devName = ConfigManager::instance().getConfig().device_name;
         if (devName && strlen(devName) > 0) {
             display.setFont(&DejaVu_Sans_Condensed_Bold_18);
+            int16_t nbx, nby;
+            uint16_t nbw, nbh;
+            const int nameX = 30;
+            const int nameY = 25;
+            display.getTextBounds(devName, nameX, nameY, &nbx, &nby, &nbw, &nbh);
+            int npad = 4;
+            int nrectX = nbx - npad;
+            int nrectY = nby - npad;
+            int nrectW = nbw + (npad * 2);
+            int nrectH = nbh + (npad * 2);
+            if (nrectX < 0)
+                nrectX = 0;
+            if (nrectY < 0)
+                nrectY = 0;
+            if (nrectX + nrectW > 200)
+                nrectW = 200 - nrectX;
+            if (nrectY + nrectH > 200)
+                nrectH = 200 - nrectY;
+            display.fillRect(nrectX, nrectY, nrectW, nrectH, GxEPD_WHITE);
             display.setTextColor(GxEPD_BLACK);
-            display.setCursor(40, 25);
+            display.setCursor(nameX, nameY);
             display.print(devName);
         }
 
