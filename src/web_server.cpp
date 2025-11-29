@@ -182,6 +182,39 @@ void startWebServer()
         request->send(200, "application/json; charset=utf-8", json);
     });
 
+    // Scan Wi-Fi networks (STA/APSTA/AP). Returns a small JSON with SSID + RSSI
+    server.on("/api/wifi/scan", HTTP_GET, [](AsyncWebServerRequest *request)
+              {
+        const char *adminUser = ConfigManager::instance().getAdminUser();
+        const char *adminPass = ConfigManager::instance().getAdminPass();
+        if (!request->authenticate(adminUser, adminPass)) {
+            Serial.println("[WEB][AUTH] /api/wifi/scan auth required");
+            return request->requestAuthentication();
+        }
+
+        interactiveLastTouchMs.store(millis());
+        Serial.println("[WEB] GET /api/wifi/scan (scanning)");
+
+        int n = WiFi.scanNetworks(/*async=*/false, /*hidden=*/true);
+        if (n < 0) {
+            request->send(500, "application/json; charset=utf-8", "{\"ok\":false,\"err\":\"scan failed\"}");
+            return;
+        }
+
+        // Build a small JSON payload: {"ok":true,"aps":[{"ssid":"x","rssi":-50},{"ssid":"y","rssi":-70}]}
+        String json = "{\"ok\":true,\"aps\":[";
+        for (int i = 0; i < n; i++) {
+            String ssid = WiFi.SSID(i);
+            ssid.replace("\\", "\\\\"); // escape backslash
+            ssid.replace("\"", "\\\"");  // escape quotes
+            if (i > 0) json += ",";
+            json += "{\"ssid\":\"" + ssid + "\",\"rssi\":" + String(WiFi.RSSI(i)) + "}";
+        }
+        json += "]}";
+
+        request->send(200, "application/json; charset=utf-8", json);
+    });
+
     server.on("/api/config", HTTP_POST,
               [](AsyncWebServerRequest *request) {},
               nullptr,

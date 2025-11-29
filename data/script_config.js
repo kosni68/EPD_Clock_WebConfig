@@ -147,6 +147,63 @@ document.getElementById('btnMqttTest').addEventListener('click', async () => {
   }
 });
 
+// Wi-Fi scan + selection
+async function scanWifi() {
+  const btn = document.getElementById('btnScanWifi');
+  const select = document.getElementById('wifi_scan_list');
+  const status = document.getElementById('wifi_scan_status');
+  if (!btn || !select) return;
+  btn.disabled = true;
+  if (status) {
+    status.innerText = 'Scan en cours...';
+    status.style.color = '#555';
+  }
+  try {
+    const res = await fetch('/api/wifi/scan');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const j = await res.json();
+    if (!j.ok || !Array.isArray(j.aps)) throw new Error('Réponse inattendue');
+
+    // Keep strongest entry per SSID
+    const bestBySsid = {};
+    j.aps.forEach(ap => {
+      if (!ap || !ap.ssid) return;
+      const key = ap.ssid;
+      if (!bestBySsid[key] || (ap.rssi || -999) > (bestBySsid[key].rssi || -999)) {
+        bestBySsid[key] = ap;
+      }
+    });
+    const aps = Object.values(bestBySsid).sort((a, b) => (b.rssi || 0) - (a.rssi || 0));
+
+    select.innerHTML = '<option value=\"\">-- sélectionner un réseau scanné --</option>';
+    aps.forEach(ap => {
+      const opt = document.createElement('option');
+      opt.value = ap.ssid;
+      opt.textContent = `${ap.ssid} (${ap.rssi || '?'} dBm)`;
+      select.appendChild(opt);
+    });
+    if (status) {
+      status.innerText = aps.length ? `${aps.length} réseau(x) trouvé(s)` : 'Aucun réseau trouvé';
+      status.style.color = aps.length ? 'green' : 'red';
+    }
+  } catch (e) {
+    if (status) {
+      status.innerText = 'Scan échec: ' + e.message;
+      status.style.color = 'red';
+    }
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('btnScanWifi').addEventListener('click', scanWifi);
+document.getElementById('wifi_scan_list').addEventListener('change', (e) => {
+  const ssid = e.target.value || '';
+  if (ssid.length) {
+    document.getElementById('wifi_ssid').value = ssid;
+  }
+});
+
 // Auto-refresh logs and act as ping using the unified /api/dashboard endpoint
 async function refreshLogsAndPing() {
   const pre = document.getElementById('logOutput');
