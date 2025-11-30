@@ -13,7 +13,7 @@ static AsyncWebServer server(80);
 static void handleGetConfig(AsyncWebServerRequest *request);
 static void handlePostConfig(AsyncWebServerRequest *request, const String &body);
 extern void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &batteryMv);
-extern void epdDraw();
+extern void epdDraw(bool fullRefresh);
 
 void startWebServer()
 {
@@ -331,7 +331,7 @@ static void handlePostConfig(AsyncWebServerRequest *request, const String &body)
             // If the device is in interactive mode, refresh the EPD now
             extern bool interactiveMode;
             if (interactiveMode) {
-                epdDraw();
+                epdDraw(false);
             }
         }
         request->send(200, "application/json; charset=utf-8", "{\"ok\":true}");

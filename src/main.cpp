@@ -46,9 +46,11 @@ String hourStr, minStr, tmp, hum2, tt, dateString;
 String days[7] = {"SU", "MO", "TU", "WE", "TH", "FR", "SA"};
 
 bool interactiveMode = false;
+// True when the next refresh must be full (first boot or wake button)
+static bool fullRefreshNext = false;
 
 static int readBatteryVoltage();
-void epdDraw();
+void epdDraw(bool fullRefresh);
 static void goDeepSleep();
 static const gpio_num_t WAKE_BUTTON = GPIO_NUM_0; // BOOT button (RTC-capable)
 void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &batteryMv);
@@ -80,7 +82,7 @@ static void goDeepSleep()
         sleepSeconds = 20;
     // Request epdDraw to render the current page with a sleep indicator overlay
     showSleepIndicator = true;
-    epdDraw();
+    epdDraw(false);
     showSleepIndicator = false;
     // Hibernate display after rendering
     display.hibernate();
@@ -235,14 +237,23 @@ static void syncRtcFromNtpIfPossible()
                   timeinfo.tm_wday);
 }
 
-void epdDraw()
+void epdDraw(bool fullRefresh)
 {
     SPI.begin(EPD_SCK, -1, EPD_MOSI, EPD_CS);
     display.epd2.selectSPI(SPI, SPISettings(SPI_CLOCK_HZ, MSBFIRST, SPI_MODE0));
 
-    display.init(115200);
+    // Skip the library's initial full clear when we only want a partial (avoids black/white flash)
+    display.init(115200, fullRefresh /*initial full refresh*/);
     display.setRotation(0);
-    display.setFullWindow();
+    if (fullRefresh)
+    {
+        display.setFullWindow();
+    }
+    else
+    {
+        // Partial window refresh to avoid the multi-phase black/white flash
+        display.setPartialWindow(0, 0, display.width(), display.height());
+    }
 
     display.firstPage();
     do
@@ -418,6 +429,14 @@ void setup()
     setupMQTT();
 
     esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
+    const bool wokeFromTimer = (cause == ESP_SLEEP_WAKEUP_TIMER);
+    const bool wokeFromButton = (cause == ESP_SLEEP_WAKEUP_EXT0);
+    // Full refresh only for cold boot/reset or wake button; timer wakes use partial
+    fullRefreshNext = !wokeFromTimer;
+    if (wokeFromButton)
+    {
+        Serial.println("[MODE] Wakeup via BOOT button -> full EPD refresh");
+    }
 
     float tempC = 0.0f;
     float humidity = 0.0f;
@@ -439,13 +458,13 @@ void setup()
 
         if (wifiOK)
         {
-            epdDraw();
+            epdDraw(false);
             publishMQTT_reading(tempC, humidity, batteryMv);
             disconnectWiFiClean();
         }
         else
         {
-            epdDraw();
+            epdDraw(false);
         }
 
         goDeepSleep();
@@ -463,7 +482,8 @@ void setup()
 
         readTimeAndSensorAndPrepareStrings(tempC, humidity, batteryMv);
 
-        epdDraw();
+        epdDraw(fullRefreshNext);
+        fullRefreshNext = false;
 
         interactiveMode = true;
         interactiveLastTouchMs.store(millis());
