@@ -30,21 +30,21 @@ struct AppConfig
     char mqtt_pass[MQTT_PASS_LEN];
     char mqtt_topic[MQTT_TOPIC_LEN];
 
-    // ---- Mesure ----
+    // ---- Measurement ----
     uint32_t measure_interval_ms;
     float measure_offset_cm;
-    // ---- Offsets capteurs ----
+    // ---- Sensor offsets ----
     float temp_offset_c;    // temperature offset in degrees Celsius
     float hum_offset_pct;   // humidity offset in percent points
 
-    // ---- Stabilisation / filtre ----
+    // ---- Smoothing / filter ----
     float avg_alpha;          // 0..1
     uint16_t median_n;        // 1..15
     uint16_t median_delay_ms; // 0..1000
     float filter_min_cm;      // e.g. 2.0
     float filter_max_cm;      // e.g. 400.0
 
-    // ---- Divers ----
+    // ---- Misc ----
     char device_name[DEVICE_NAME_LEN];
     uint32_t interactive_timeout_min;
     uint32_t deepsleep_interval_min;
@@ -54,7 +54,7 @@ struct AppConfig
 
     char app_version[APP_VERSION_LEN];
 
-    // ---- Horloge / fuseau horaire ----
+    // ---- Clock / timezone ----
     char tz_string[TZ_STRING_LEN]; // ex: "CET-1CEST,M3.5.0/2,M10.5.0/3"
 };
 

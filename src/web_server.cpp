@@ -17,32 +17,30 @@ extern void epdDraw(bool fullRefresh);
 
 void startWebServer()
 {
-    Serial.println("[WEB] Initializing HTTP server...");
+    DEBUG_PRINT("[WEB] Initializing HTTP server...");
 
     if (!LittleFS.begin(true))
     {
-        Serial.println("[WEB][ERROR] LittleFS mount failed!");
+        DEBUG_PRINT("[WEB][ERROR] LittleFS mount failed!");
         while (true)
             delay(1000);
     }
 
     if (!connectWiFiShort(8000))
     {
-        Serial.println("[WEB][WARN] Wi-Fi connection failed. Enabling access point mode...");
+        DEBUG_PRINT("[WEB][WARN] Wi-Fi connection failed. Enabling access point mode...");
         WiFi.mode(WIFI_AP);
         WiFi.softAP("EPD_Clock");
-        Serial.print("[WEB] Access point active: ");
-        Serial.println(WiFi.softAPIP());
+        DEBUG_PRINTF("[WEB] Access point active: %s\n", WiFi.softAPIP().toString().c_str());
     }
     else
     {
-        Serial.print("[WEB] Connected to Wi-Fi: ");
-        Serial.println(WiFi.localIP());
+        DEBUG_PRINTF("[WEB] Connected to Wi-Fi: %s\n", WiFi.localIP().toString().c_str());
     }
 
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
               {
-        Serial.println("[WEB] GET /index.html");
+        DEBUG_PRINT("[WEB] GET /index.html");
         if (LittleFS.exists("/index.html")) {
             AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/index.html", "text/html");
             response->addHeader("Content-Type", "text/html; charset=utf-8");
@@ -55,7 +53,7 @@ void startWebServer()
 
     server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request)
               {
-        Serial.println("[WEB] GET /style.css");
+        DEBUG_PRINT("[WEB] GET /style.css");
         AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/style.css", "text/css");
         response->addHeader("Content-Type", "text/css; charset=utf-8");
         request->send(response); });
@@ -65,10 +63,10 @@ void startWebServer()
         const char *adminUser = ConfigManager::instance().getAdminUser();
         const char *adminPass = ConfigManager::instance().getAdminPass();
         if (!request->authenticate(adminUser, adminPass)) {
-            Serial.println("[WEB][AUTH] Authentication required on /config.html");
+            DEBUG_PRINT("[WEB][AUTH] Authentication required on /config.html");
             return request->requestAuthentication();
         }
-        Serial.println("[WEB] GET /config.html (auth OK)");
+        DEBUG_PRINT("[WEB] GET /config.html (auth OK)");
         AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/config.html", "text/html");
         response->addHeader("Content-Type", "text/html; charset=utf-8");
         request->send(response); });
@@ -78,10 +76,10 @@ void startWebServer()
         const char *adminUser = ConfigManager::instance().getAdminUser();
         const char *adminPass = ConfigManager::instance().getAdminPass();
         if (!request->authenticate(adminUser, adminPass)) {
-            Serial.println("[WEB][AUTH] Authentication required on /script_config.js");
+            DEBUG_PRINT("[WEB][AUTH] Authentication required on /script_config.js");
             return request->requestAuthentication();
         }
-        Serial.println("[WEB] GET /script_config.js (auth OK)");
+        DEBUG_PRINT("[WEB] GET /script_config.js (auth OK)");
         AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/script_config.js", "application/javascript");
         response->addHeader("Content-Type", "application/javascript; charset=utf-8");
         request->send(response); });
@@ -90,12 +88,12 @@ void startWebServer()
               {
         String page = request->arg("page");
         interactiveLastTouchMs.store(millis());
-        Serial.printf("[WEB] POST /ping (%s)\n", page.c_str());
+        DEBUG_PRINTF("[WEB] POST /ping (%s)\n", page.c_str());
         request->send(200, "application/json; charset=utf-8", "{\"ok\":true}"); });
 
     server.on("/api/config", HTTP_GET, [](AsyncWebServerRequest *request)
               {
-        Serial.println("[WEB] GET /api/config");
+        DEBUG_PRINT("[WEB] GET /api/config");
         handleGetConfig(request); });
 
     server.on("/api/mqtt/test", HTTP_POST, [](AsyncWebServerRequest *request)
@@ -103,11 +101,11 @@ void startWebServer()
         const char *adminUser = ConfigManager::instance().getAdminUser();
         const char *adminPass = ConfigManager::instance().getAdminPass();
         if (!request->authenticate(adminUser, adminPass)) {
-            Serial.println("[WEB][AUTH] /api/mqtt/test auth required");
+            DEBUG_PRINT("[WEB][AUTH] /api/mqtt/test auth required");
             return request->requestAuthentication();
         }
 
-        Serial.println("[WEB] POST /api/mqtt/test (attempting test publish)");
+        DEBUG_PRINT("[WEB] POST /api/mqtt/test (attempting test publish)");
         float t = 0.0f, h = 0.0f;
         int batt = 0;
         readTimeAndSensorAndPrepareStrings(t, h, batt);
@@ -121,10 +119,10 @@ void startWebServer()
         const char *adminUser = ConfigManager::instance().getAdminUser();
         const char *adminPass = ConfigManager::instance().getAdminPass();
         if (!request->authenticate(adminUser, adminPass)) {
-            Serial.println("[WEB][AUTH] /api/logs auth required");
+            DEBUG_PRINT("[WEB][AUTH] /api/logs auth required");
             return request->requestAuthentication();
         }
-        Serial.println("[WEB] GET /api/logs");
+        DEBUG_PRINT("[WEB] GET /api/logs");
         String logs = getLogs();
         request->send(200, "text/plain; charset=utf-8", logs);
     });
@@ -135,7 +133,7 @@ void startWebServer()
         // Update interactive ping (acts like /ping)
         interactiveLastTouchMs.store(millis());
 
-        Serial.println("[WEB] POST /api/dashboard");
+        DEBUG_PRINT("[WEB] POST /api/dashboard");
         // metrics
         String metricsJson = getLatestMetricsJson();
         // logs (escape for JSON)
@@ -164,7 +162,7 @@ void startWebServer()
     server.on("/api/dashboard", HTTP_GET, [](AsyncWebServerRequest *request)
               {
         interactiveLastTouchMs.store(millis());
-        Serial.println("[WEB] GET /api/dashboard");
+        DEBUG_PRINT("[WEB] GET /api/dashboard");
         String metricsJson = getLatestMetricsJson();
         String logs = getLogs();
         String logsEscaped;
@@ -191,12 +189,12 @@ void startWebServer()
         const char *adminUser = ConfigManager::instance().getAdminUser();
         const char *adminPass = ConfigManager::instance().getAdminPass();
         if (!request->authenticate(adminUser, adminPass)) {
-            Serial.println("[WEB][AUTH] /api/wifi/scan auth required");
+            DEBUG_PRINT("[WEB][AUTH] /api/wifi/scan auth required");
             return request->requestAuthentication();
         }
 
         interactiveLastTouchMs.store(millis());
-        Serial.println("[WEB] GET /api/wifi/scan (scanning)");
+        DEBUG_PRINT("[WEB] GET /api/wifi/scan (scanning)");
 
         int n = WiFi.scanNetworks(/*async=*/false, /*hidden=*/true);
         if (n < 0) {
@@ -227,7 +225,7 @@ void startWebServer()
                   const char *adminPass = ConfigManager::instance().getAdminPass();
                   if (!request->authenticate(adminUser, adminPass))
                   {
-                      Serial.println("[WEB][AUTH] /api/config POST not authorized");
+                      DEBUG_PRINT("[WEB][AUTH] /api/config POST not authorized");
                       request->requestAuthentication();
                       return;
                   }
@@ -236,14 +234,14 @@ void startWebServer()
                   {
                       if (total > 4096)
                       {
-                          Serial.printf("[WEB] Payload too large (%u)\n", (unsigned)total);
+                          DEBUG_PRINTF("[WEB] Payload too large (%u)\n", (unsigned)total);
                           request->send(413, "application/json; charset=utf-8",
                                         "{\"ok\":false,\"err\":\"payload too large\"}");
                           return;
                       }
                       request->_tempObject = new String();
                       ((String *)request->_tempObject)->reserve(total);
-                      Serial.printf("[WEB] Begin receiving JSON body (%u bytes)\n", (unsigned)total);
+                      DEBUG_PRINTF("[WEB] Begin receiving JSON body (%u bytes)\n", (unsigned)total);
                   }
 
                   String *body = reinterpret_cast<String *>(request->_tempObject);
@@ -254,7 +252,7 @@ void startWebServer()
 
                   if (index + len == total)
                   {
-                      Serial.printf("[WEB] Full JSON body received (%u bytes)\n", (unsigned)total);
+                      DEBUG_PRINTF("[WEB] Full JSON body received (%u bytes)\n", (unsigned)total);
                       if (body)
                       {
                           handlePostConfig(request, *body);
@@ -270,18 +268,18 @@ void startWebServer()
         const char *adminPass = ConfigManager::instance().getAdminPass();
         if (!request->authenticate(adminUser, adminPass))
         {
-            Serial.println("[WEB][AUTH] /api/reboot POST not authorized");
+            DEBUG_PRINT("[WEB][AUTH] /api/reboot POST not authorized");
             return request->requestAuthentication();
         }
 
-        Serial.println("[WEB] Reboot requested...");
+        DEBUG_PRINT("[WEB] Reboot requested...");
         request->send(200, "application/json; charset=utf-8", "{\"ok\":true}");
         delay(500);
         ESP.restart();
     });
 
     server.begin();
-    Serial.println("[WEB] Web server started.");
+    DEBUG_PRINT("[WEB] Web server started.");
 }
 
 static void handleGetConfig(AsyncWebServerRequest *request)
@@ -290,30 +288,30 @@ static void handleGetConfig(AsyncWebServerRequest *request)
     const char *adminPass = ConfigManager::instance().getAdminPass();
     if (!request->authenticate(adminUser, adminPass))
     {
-        Serial.println("[WEB][AUTH] /api/config GET not authorized");
+        DEBUG_PRINT("[WEB][AUTH] /api/config GET not authorized");
         return request->requestAuthentication();
     }
 
-    Serial.println("[WEB] GET /api/config (auth OK)");
+    DEBUG_PRINT("[WEB] GET /api/config (auth OK)");
     String json = ConfigManager::instance().toJsonString();
     request->send(200, "application/json; charset=utf-8", json);
 }
 
 static void handlePostConfig(AsyncWebServerRequest *request, const String &body)
 {
-    Serial.println("[WEB] POST /api/config received");
+    DEBUG_PRINT("[WEB] POST /api/config received");
 
     const char *adminUser = ConfigManager::instance().getAdminUser();
     const char *adminPass = ConfigManager::instance().getAdminPass();
     if (!request->authenticate(adminUser, adminPass))
     {
-        Serial.println("[WEB][AUTH] /api/config POST not authorized (2nd check)");
+        DEBUG_PRINT("[WEB][AUTH] /api/config POST not authorized (2nd check)");
         return request->requestAuthentication();
     }
 
     if (body.isEmpty())
     {
-        Serial.println("[WEB][ERR] Empty JSON body!");
+        DEBUG_PRINT("[WEB][ERR] Empty JSON body!");
         request->send(400, "application/json; charset=utf-8", "{\"ok\":false,\"err\":\"empty body\"}");
         return;
     }
@@ -321,7 +319,7 @@ static void handlePostConfig(AsyncWebServerRequest *request, const String &body)
     bool okUpdate = ConfigManager::instance().updateFromJson(body);
     if (okUpdate)
     {
-        Serial.println("[WEB] Configuration updated (deferred save).");
+        DEBUG_PRINT("[WEB] Configuration updated (deferred save).");
         // Apply changes immediately: re-read sensors and refresh display so offsets take effect
         {
             float tmpT = 0.0f, tmpH = 0.0f;
@@ -338,7 +336,7 @@ static void handlePostConfig(AsyncWebServerRequest *request, const String &body)
     }
     else
     {
-        Serial.println("[WEB][ERR] JSON update failed!");
+        DEBUG_PRINT("[WEB][ERR] JSON update failed!");
         request->send(400, "application/json; charset=utf-8", "{\"ok\":false}");
     }
 }

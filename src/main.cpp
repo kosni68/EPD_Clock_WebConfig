@@ -105,7 +105,7 @@ static void goDeepSleep()
     delay(5);
     esp_sleep_enable_timer_wakeup((uint64_t)sleepSeconds * 1000000ULL);
 
-    Serial.printf("[POWER] Deep sleep for %lu s\n", (unsigned long)sleepSeconds);
+    DEBUG_PRINTF("[POWER] Deep sleep for %lu s\n", (unsigned long)sleepSeconds);
     esp_deep_sleep_start();
 }
 
@@ -124,9 +124,9 @@ static uint32_t computeSleepSecondsAlignedToMinute()
     if (sleepSec == 0)
         sleepSec = 60U;
 
-    Serial.printf("[POWER] Minute-aligned sleep: now=%llu -> sleep %lus\n",
-                  (unsigned long long)nowEpoch,
-                  (unsigned long)sleepSec);
+    DEBUG_PRINTF("[POWER] Minute-aligned sleep: now=%llu -> sleep %lus\n",
+                 (unsigned long long)nowEpoch,
+                 (unsigned long)sleepSec);
     return sleepSec;
 }
 
@@ -249,6 +249,10 @@ void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &b
         voltageSegments = 0;
     if (voltageSegments > 5)
         voltageSegments = 5;
+
+    DEBUG_PRINTF("[SENSORS] %s %s -> T=%.1fC H=%.1f%% Batt=%dmV\n",
+                 tt.c_str(), dateString.c_str(),
+                 tempC, humidityPct, batteryMv);
 }
 
 // Ensure TZ environment is set even if NTP/Wi-Fi is unavailable
@@ -275,11 +279,11 @@ static void syncRtcFromNtpIfPossible()
 
     if (WiFi.status() != WL_CONNECTED)
     {
-        Serial.println("[NTP] Wi-Fi not connected, NTP unavailable (TZ applied).");
+        DEBUG_PRINT("[NTP] Wi-Fi not connected, NTP unavailable (TZ applied).");
         return;
     }
 
-    Serial.printf("[NTP] Sync NTP (TZ=\"%s\")...\n", tz);
+    DEBUG_PRINTF("[NTP] Sync NTP (TZ=\"%s\")...\n", tz);
 
     // Initialize SNTP + timezone (with automatic DST handling)
     configTzTime(tz, "pool.ntp.org", "time.nist.gov", "time.google.com");
@@ -287,15 +291,15 @@ static void syncRtcFromNtpIfPossible()
     struct tm timeinfo;
     if (!getLocalTime(&timeinfo, 10000))
     {
-        Serial.println("[NTP][ERR] getLocalTime failed!");
+        DEBUG_PRINT("[NTP][ERR] getLocalTime failed!");
         return;
     }
 
     // System time (NTP) is configured; no hardware RTC used anymore
-    Serial.printf("[NTP] System time obtained %02d:%02d:%02d %02d/%02d/%04d (wday=%d)\n",
-                  timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec,
-                  timeinfo.tm_mday, timeinfo.tm_mon + 1, timeinfo.tm_year + 1900,
-                  timeinfo.tm_wday);
+    DEBUG_PRINTF("[NTP] System time obtained %02d:%02d:%02d %02d/%02d/%04d (wday=%d)\n",
+                 timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec,
+                 timeinfo.tm_mday, timeinfo.tm_mon + 1, timeinfo.tm_year + 1900,
+                 timeinfo.tm_wday);
 }
 
 void epdDraw(bool fullRefresh)
@@ -491,7 +495,7 @@ void setup()
 
     if (!ConfigManager::instance().begin())
     {
-        Serial.println("[Config] Loading error, using default values.");
+        DEBUG_PRINT("[Config] Loading error, using default values.");
         ConfigManager::instance().save();
     }
 
@@ -513,7 +517,7 @@ void setup()
     fullRefreshNext = !wokeFromTimer;
     if (wokeFromButton)
     {
-        Serial.println("[MODE] Wakeup via BOOT button -> full EPD refresh");
+        DEBUG_PRINT("[MODE] Wakeup via BOOT button -> full EPD refresh");
     }
 
     float tempC = 0.0f;
@@ -522,7 +526,7 @@ void setup()
 
     if (cause == ESP_SLEEP_WAKEUP_TIMER)
     {
-        Serial.println("[MODE] TIMER wakeup -> measurement + deep sleep mode");
+        DEBUG_PRINT("[MODE] TIMER wakeup -> measurement + deep sleep mode");
 
         const auto cfg = ConfigManager::instance().getConfig();
         const uint32_t mqttInterval = cfg.deepsleep_interval_min ? cfg.deepsleep_interval_min : 5;
@@ -619,11 +623,11 @@ void loop()
 
         if ((uint32_t)(nowMs - last) > timeout)
         {
-            Serial.println("[MODE] Interactive timeout reached.");
+            DEBUG_PRINT("[MODE] Interactive timeout reached.");
 
             if (isApModeActive())
             {
-                Serial.println("[POWER] AP active, staying in interactive mode.");
+                DEBUG_PRINT("[POWER] AP active, staying in interactive mode.");
                 interactiveLastTouchMs.store(millis());
             }
             else
