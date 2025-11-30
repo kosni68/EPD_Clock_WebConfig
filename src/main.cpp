@@ -50,6 +50,8 @@ String days[7] = {"SU", "MO", "TU", "WE", "TH", "FR", "SA"};
 bool interactiveMode = false;
 // True when the next refresh must be full (first boot or wake button)
 static bool fullRefreshNext = false;
+// Track last drawn minute in interactive mode (to refresh once per minute)
+static int lastRenderedMinute = -1;
 
 static int readBatteryVoltage();
 void epdDraw(bool fullRefresh);
@@ -289,6 +291,26 @@ void epdDraw(bool fullRefresh)
     SPI.begin(EPD_SCK, -1, EPD_MOSI, EPD_CS);
     display.epd2.selectSPI(SPI, SPISettings(SPI_CLOCK_HZ, MSBFIRST, SPI_MODE0));
 
+    auto clearTextArea = [&](const String &text, int cursorX, int cursorY, uint16_t pad)
+    {
+        int16_t bx, by;
+        uint16_t bw, bh;
+        display.getTextBounds(text, cursorX, cursorY, &bx, &by, &bw, &bh);
+        int rx = bx - (int)pad;
+        int ry = by - (int)pad;
+        int rw = (int)bw + (int)pad * 2;
+        int rh = (int)bh + (int)pad * 2;
+        if (rx < 0)
+            rx = 0;
+        if (ry < 0)
+            ry = 0;
+        if (rx + rw > (int)display.width())
+            rw = (int)display.width() - rx;
+        if (ry + rh > (int)display.height())
+            rh = (int)display.height() - ry;
+        display.fillRect(rx, ry, rw, rh, GxEPD_WHITE);
+    };
+
     // Skip the library's initial full clear when we only want a partial (avoids black/white flash)
     display.init(115200, fullRefresh /*initial full refresh*/);
     display.setRotation(0);
@@ -333,6 +355,7 @@ void epdDraw(bool fullRefresh)
 
         display.setTextColor(GxEPD_BLACK);
         display.setFont(&DSEG7_Classic_Bold_36);
+        clearTextArea(tt, 18, 130, 2);
         display.setCursor(18, 130);
         display.print(tt);
 
@@ -343,17 +366,22 @@ void epdDraw(bool fullRefresh)
 
         display.setTextColor(GxEPD_BLACK);
         display.setCursor(60, 161);
+        clearTextArea("TEMP", 60, 161, 2);
         display.print("TEMP");
         display.setCursor(60, 177);
+        clearTextArea(tmp, 60, 177, 2);
         display.print(tmp);
         display.setCursor(135, 161);
+        clearTextArea("HUM", 135, 161, 2);
         display.print("HUM");
         display.setCursor(135, 177);
+        clearTextArea(hum2, 135, 177, 2);
         display.print(hum2);
         display.setCursor(120, 78);
         // Display "MQTT" if enabled
         if (ConfigManager::instance().getConfig().mqtt_enabled)
         {
+            clearTextArea("MQTT", 120, 78, 2);
             display.print("MQTT");
         }
 
@@ -362,6 +390,7 @@ void epdDraw(bool fullRefresh)
         display.print(days[sys_wday]);
 
         display.setFont(&DejaVu_Sans_Condensed_Bold_18);
+        clearTextArea(dateString, 27, 76, 3);
         display.setCursor(27, 76);
         display.print(dateString);
 
@@ -522,6 +551,7 @@ void setup()
         syncRtcFromNtpIfPossible();
 
         readTimeAndSensorAndPrepareStrings(tempC, humidity, batteryMv);
+        lastRenderedMinute = m;
 
         epdDraw(fullRefreshNext);
         fullRefreshNext = false;
@@ -535,12 +565,32 @@ void loop()
 {
     if (interactiveMode)
     {
+        static uint32_t lastMinutePollMs = 0;
+        const uint32_t nowMs = millis();
+
+        // Auto-refresh display once per minute in interactive/AP mode
+        if ((uint32_t)(nowMs - lastMinutePollMs) > 1000)
+        {
+            lastMinutePollMs = nowMs;
+            struct tm ti;
+            if (getLocalTime(&ti, 50))
+            {
+                if (lastRenderedMinute != ti.tm_min)
+                {
+                    lastRenderedMinute = ti.tm_min;
+                    float t = 0.0f, h = 0.0f;
+                    int batt = 0;
+                    readTimeAndSensorAndPrepareStrings(t, h, batt);
+                    epdDraw(false);
+                }
+            }
+        }
+
         const uint32_t timeoutMin = ConfigManager::instance().getConfig().interactive_timeout_min;
         const uint32_t timeout = (timeoutMin ? timeoutMin : 5) * 60000UL;
-        const uint32_t now = millis();
         const uint32_t last = interactiveLastTouchMs.load();
 
-        if ((uint32_t)(now - last) > timeout)
+        if ((uint32_t)(nowMs - last) > timeout)
         {
             Serial.println("[MODE] Interactive timeout reached.");
 
