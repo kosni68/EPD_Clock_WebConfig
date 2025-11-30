@@ -3,6 +3,8 @@
 #include <GxEPD2_BW.h>
 #include <Fonts/FreeMonoBold12pt7b.h>
 #include <Adafruit_SHTC3.h>
+#include <stdlib.h>
+#include <string.h>
 #include "background.h"
 #include "fonts.h"
 #include "esp_sleep.h"
@@ -54,6 +56,7 @@ void epdDraw(bool fullRefresh);
 static void goDeepSleep();
 static const gpio_num_t WAKE_BUTTON = GPIO_NUM_0; // BOOT button (RTC-capable)
 void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &batteryMv);
+static const char *applyTimezoneFromConfig();
 static void syncRtcFromNtpIfPossible();
 // Latest metrics snapshot (kept for dashboard polling)
 static float latest_tempC = 0.0f;
@@ -202,20 +205,32 @@ void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &b
         voltageSegments = 5;
 }
 
-static void syncRtcFromNtpIfPossible()
+// Ensure TZ environment is set even if NTP/Wi-Fi is unavailable
+static const char *applyTimezoneFromConfig()
 {
-    if (WiFi.status() != WL_CONNECTED)
-    {
-        Serial.println("[NTP] Wi-Fi not connected, NTP unavailable.");
-        return;
-    }
+    static char tzBuf[TZ_STRING_LEN];
 
     const auto cfg = ConfigManager::instance().getConfig();
     const char *tz = cfg.tz_string;
     if (!tz || strlen(tz) == 0)
     {
-        // Default: Europe/Paris
         tz = "CET-1CEST,M3.5.0/2,M10.5.0/3";
+    }
+
+    strlcpy(tzBuf, tz, sizeof(tzBuf));
+    setenv("TZ", tzBuf, 1);
+    tzset();
+    return tzBuf;
+}
+
+static void syncRtcFromNtpIfPossible()
+{
+    const char *tz = applyTimezoneFromConfig();
+
+    if (WiFi.status() != WL_CONNECTED)
+    {
+        Serial.println("[NTP] Wi-Fi not connected, NTP unavailable (TZ applied).");
+        return;
     }
 
     Serial.printf("[NTP] Sync NTP (TZ=\"%s\")...\n", tz);
@@ -447,11 +462,8 @@ void setup()
         Serial.println("[MODE] TIMER wakeup -> measurement + deep sleep mode");
 
         bool wifiOK = connectWiFiShort(6000);
-        if (wifiOK)
-        {
-            // Sync system time via NTP if Wi-Fi available (timezone aware)
-            syncRtcFromNtpIfPossible();
-        }
+        // Always set TZ; sync via NTP only when Wi-Fi is available
+        syncRtcFromNtpIfPossible();
 
         // Re-read the current time (may have been updated) and sensors
         readTimeAndSensorAndPrepareStrings(tempC, humidity, batteryMv);
@@ -474,11 +486,8 @@ void setup()
         // Boot/reset: interactive mode + web server
         startWebServer();
 
-        // If connected to Wi-Fi (STA mode), we can perform NTP sync
-        if (WiFi.status() == WL_CONNECTED)
-        {
-            syncRtcFromNtpIfPossible();
-        }
+        // Apply TZ always; perform NTP sync when possible
+        syncRtcFromNtpIfPossible();
 
         readTimeAndSensorAndPrepareStrings(tempC, humidity, batteryMv);
 
