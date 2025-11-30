@@ -61,6 +61,7 @@ static const gpio_num_t WAKE_BUTTON = GPIO_NUM_0; // BOOT button (RTC-capable)
 void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &batteryMv);
 static const char *applyTimezoneFromConfig();
 static void syncRtcFromNtpIfPossible();
+static void clearTextArea(const String &text, int cursorX, int cursorY, uint16_t pad, uint16_t color = GxEPD_WHITE);
 // Latest metrics snapshot (kept for dashboard polling)
 static float latest_tempC = 0.0f;
 static float latest_humidity = 0.0f;
@@ -137,6 +138,27 @@ static uint32_t computeSleepSecondsAlignedToMinute(uint32_t intervalMin)
                   (unsigned long long)nowEpoch,
                   (unsigned long long)alignedEpoch);
     return (uint32_t)sleepSec;
+}
+
+// Clear a text area (with padding) to a specific color before re-drawing dynamic content
+static void clearTextArea(const String &text, int cursorX, int cursorY, uint16_t pad, uint16_t color)
+{
+    int16_t bx, by;
+    uint16_t bw, bh;
+    display.getTextBounds(text, cursorX, cursorY, &bx, &by, &bw, &bh);
+    int rx = bx - (int)pad;
+    int ry = by - (int)pad;
+    int rw = (int)bw + (int)pad * 2;
+    int rh = (int)bh + (int)pad * 2;
+    if (rx < 0)
+        rx = 0;
+    if (ry < 0)
+        ry = 0;
+    if (rx + rw > (int)display.width())
+        rw = (int)display.width() - rx;
+    if (ry + rh > (int)display.height())
+        rh = (int)display.height() - ry;
+    display.fillRect(rx, ry, rw, rh, color);
 }
 
 static String getWifiStatusString()
@@ -291,26 +313,6 @@ void epdDraw(bool fullRefresh)
     SPI.begin(EPD_SCK, -1, EPD_MOSI, EPD_CS);
     display.epd2.selectSPI(SPI, SPISettings(SPI_CLOCK_HZ, MSBFIRST, SPI_MODE0));
 
-    auto clearTextArea = [&](const String &text, int cursorX, int cursorY, uint16_t pad)
-    {
-        int16_t bx, by;
-        uint16_t bw, bh;
-        display.getTextBounds(text, cursorX, cursorY, &bx, &by, &bw, &bh);
-        int rx = bx - (int)pad;
-        int ry = by - (int)pad;
-        int rw = (int)bw + (int)pad * 2;
-        int rh = (int)bh + (int)pad * 2;
-        if (rx < 0)
-            rx = 0;
-        if (ry < 0)
-            ry = 0;
-        if (rx + rw > (int)display.width())
-            rw = (int)display.width() - rx;
-        if (ry + rh > (int)display.height())
-            rh = (int)display.height() - ry;
-        display.fillRect(rx, ry, rw, rh, GxEPD_WHITE);
-    };
-
     // Skip the library's initial full clear when we only want a partial (avoids black/white flash)
     display.init(115200, fullRefresh /*initial full refresh*/);
     display.setRotation(0);
@@ -390,7 +392,8 @@ void epdDraw(bool fullRefresh)
         display.print(days[sys_wday]);
 
         display.setFont(&DejaVu_Sans_Condensed_Bold_18);
-        clearTextArea(dateString, 27, 76, 3);
+        display.setTextColor(GxEPD_WHITE);
+        clearTextArea(dateString, 27, 76, 3, GxEPD_BLACK);
         display.setCursor(27, 76);
         display.print(dateString);
 
