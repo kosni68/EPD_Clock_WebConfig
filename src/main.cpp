@@ -56,7 +56,7 @@ static int lastRenderedMinute = -1;
 static int readBatteryVoltage();
 void epdDraw(bool fullRefresh);
 static void goDeepSleep();
-static uint32_t computeSleepSecondsAlignedToMinute(uint32_t intervalMin);
+static uint32_t computeSleepSecondsAlignedToMinute();
 static const gpio_num_t WAKE_BUTTON = GPIO_NUM_0; // BOOT button (RTC-capable)
 void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &batteryMv);
 static const char *applyTimezoneFromConfig();
@@ -68,6 +68,9 @@ static float latest_humidity = 0.0f;
 static int latest_batteryMv = 0;
 static String latest_time_str = "";
 static String latest_date_str = "";
+
+// Counter stored in RTC memory to decide when to send MQTT while still waking every minute
+RTC_DATA_ATTR uint32_t mqttMinuteCounter = 0;
 
 String getLatestMetricsJson()
 {
@@ -83,8 +86,7 @@ String getLatestMetricsJson()
 
 static void goDeepSleep()
 {
-    const auto cfg = ConfigManager::instance().getConfig();
-    uint32_t sleepSeconds = computeSleepSecondsAlignedToMinute(cfg.deepsleep_interval_min);
+    uint32_t sleepSeconds = computeSleepSecondsAlignedToMinute();
     // Request epdDraw to render the current page with a sleep indicator overlay
     showSleepIndicator = true;
     epdDraw(false);
@@ -107,37 +109,25 @@ static void goDeepSleep()
     esp_deep_sleep_start();
 }
 
-// Compute sleep duration so wake-up occurs close to a minute boundary and never more than once per minute
-static uint32_t computeSleepSecondsAlignedToMinute(uint32_t intervalMin)
+// Compute sleep duration so wake-up occurs close to the next minute boundary (always at least once per minute)
+static uint32_t computeSleepSecondsAlignedToMinute()
 {
-    // Enforce minimum interval of 1 minute
-    uint64_t minutes = (intervalMin == 0) ? 5ULL : intervalMin;
-    uint64_t intervalSec = minutes * 60ULL;
-    if (intervalSec < 60ULL)
-        intervalSec = 60ULL;
-
     time_t nowEpoch = time(nullptr);
     if (nowEpoch < 10000)
     {
-        // If time is not available, fallback to the raw interval
-        return (uint32_t)intervalSec;
+        // If time is not available, fall back to a fixed 60s interval
+        return 60U;
     }
 
-    // Align target to the next minute boundary after the requested interval
-    uint64_t targetEpoch = nowEpoch + intervalSec;
-    uint64_t alignedEpoch = ((targetEpoch + 59ULL) / 60ULL) * 60ULL;
-    uint64_t sleepSec = (alignedEpoch > (uint64_t)nowEpoch) ? (alignedEpoch - (uint64_t)nowEpoch) : intervalSec;
-    if (sleepSec < 60ULL)
-        sleepSec = 60ULL;
-    if (sleepSec > 0xFFFFFFFFULL)
-        sleepSec = 0xFFFFFFFFULL;
+    uint32_t secondsIntoMinute = (uint32_t)(nowEpoch % 60ULL);
+    uint32_t sleepSec = 60U - secondsIntoMinute;
+    if (sleepSec == 0)
+        sleepSec = 60U;
 
-    Serial.printf("[POWER] Requested interval %llus -> aligned sleep %llus (now=%llu, target=%llu)\n",
-                  (unsigned long long)intervalSec,
-                  (unsigned long long)sleepSec,
+    Serial.printf("[POWER] Minute-aligned sleep: now=%llu -> sleep %lus\n",
                   (unsigned long long)nowEpoch,
-                  (unsigned long long)alignedEpoch);
-    return (uint32_t)sleepSec;
+                  (unsigned long)sleepSec);
+    return sleepSec;
 }
 
 // Clear a text area (with padding) to a specific color before re-drawing dynamic content
@@ -510,6 +500,15 @@ void setup()
     esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
     const bool wokeFromTimer = (cause == ESP_SLEEP_WAKEUP_TIMER);
     const bool wokeFromButton = (cause == ESP_SLEEP_WAKEUP_EXT0);
+    if (wokeFromTimer)
+    {
+        // Track elapsed minutes across deep-sleep cycles to decide MQTT cadence
+        mqttMinuteCounter++;
+    }
+    else
+    {
+        mqttMinuteCounter = 0;
+    }
     // Full refresh only for cold boot/reset or wake button; timer wakes use partial
     fullRefreshNext = !wokeFromTimer;
     if (wokeFromButton)
@@ -525,14 +524,39 @@ void setup()
     {
         Serial.println("[MODE] TIMER wakeup -> measurement + deep sleep mode");
 
-        bool wifiOK = connectWiFiShort(6000);
-        // Always set TZ; sync via NTP only when Wi-Fi is available
-        syncRtcFromNtpIfPossible();
+        const auto cfg = ConfigManager::instance().getConfig();
+        const uint32_t mqttInterval = cfg.deepsleep_interval_min ? cfg.deepsleep_interval_min : 5;
+        bool mqttDue = false;
+        if (cfg.mqtt_enabled && mqttInterval > 0)
+        {
+            if (mqttMinuteCounter >= mqttInterval)
+            {
+                mqttDue = true;
+                mqttMinuteCounter = 0;
+            }
+        }
+        else
+        {
+            mqttMinuteCounter = 0;
+        }
+
+        // Always set TZ; only sync via NTP when Wi-Fi will be used
+        applyTimezoneFromConfig();
+
+        bool wifiOK = false;
+        if (mqttDue)
+        {
+            wifiOK = connectWiFiShort(6000);
+            if (wifiOK)
+            {
+                syncRtcFromNtpIfPossible();
+            }
+        }
 
         // Re-read the current time (may have been updated) and sensors
         readTimeAndSensorAndPrepareStrings(tempC, humidity, batteryMv);
 
-        if (wifiOK)
+        if (mqttDue && wifiOK)
         {
             epdDraw(false);
             publishMQTT_reading(tempC, humidity, batteryMv);

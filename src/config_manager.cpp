@@ -48,7 +48,12 @@ void ConfigManager::applyDefaultsIfNeeded()
     if (config_.deepsleep_interval_min == 0)
     {
         config_.deepsleep_interval_min = 5;
-        Serial.println("  -> deepsleep_interval_min set to 5");
+        Serial.println("  -> deepsleep_interval_min set to 5 (MQTT cadence)");
+    }
+    else if (config_.deepsleep_interval_min < 1)
+    {
+        config_.deepsleep_interval_min = 1;
+        Serial.println("  -> deepsleep_interval_min clamped to 1 (MQTT cadence)");
     }
     if (config_.measure_interval_ms < 50)
     {
