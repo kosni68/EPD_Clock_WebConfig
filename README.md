@@ -47,7 +47,7 @@ ESP32-S3 e-paper clock firmware that shows time, date, temperature, humidity, ba
 - `POST /api/mqtt/test` triggers a test publish with dummy values.
 
 ## Power Behavior
-- If woken by timer: connect Wi-Fi briefly, sync NTP, read sensors, update display, publish MQTT (if enabled), then deep sleep for `deepsleep_interval_s`.
+- If woken by timer: connect Wi-Fi briefly, sync NTP, read sensors, update display, publish MQTT (if enabled), then deep sleep for a minute-aligned interval (`deepsleep_interval_min`, at least 1 min, default 5 min).
 - In interactive mode (after fresh boot): serves web UI until `interactive_timeout_min` elapses; if not in AP mode, disconnects Wi-Fi and sleeps.
 
 ## Defaults (set in `ConfigManager::applyDefaultsIfNeeded`)
@@ -55,7 +55,7 @@ ESP32-S3 e-paper clock firmware that shows time, date, temperature, humidity, ba
 - Wi-Fi empty (must be set)
 - MQTT disabled, host `broker.local`, port 1883, topic empty
 - Admin credentials: `admin` / `admin` (change them!)
-- Deep sleep interval: 20 s; interactive timeout: 5 min
+- Deep sleep interval: 5 min; interactive timeout: 5 min
 - Sensor offsets: 0; NTP TZ: `CET-1CEST,M3.5.0/2,M10.5.0/3`
 
 ## LittleFS Content

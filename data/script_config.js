@@ -32,7 +32,10 @@ async function fetchConfig() {
       ? json.interactive_timeout_min
       : (json.interactive_timeout_ms ? Math.ceil(json.interactive_timeout_ms / 60000) : 5);
     document.getElementById('interactive_timeout_min').value = timeoutMin || 5;
-    document.getElementById('deepsleep_interval_s').value = json.deepsleep_interval_s || 20;
+    const deepMin = (typeof json.deepsleep_interval_min !== 'undefined')
+      ? json.deepsleep_interval_min
+      : (json.deepsleep_interval_s ? Math.ceil(json.deepsleep_interval_s / 60) : 5);
+    document.getElementById('deepsleep_interval_min').value = deepMin || 5;
 
     document.getElementById('device_name').value = json.device_name || '';
     document.getElementById('admin_user').value = json.admin_user || '';
@@ -75,7 +78,8 @@ function gatherConfig() {
 
   const timeoutMin = parseInt(document.getElementById('interactive_timeout_min').value);
   obj.interactive_timeout_min = (timeoutMin && timeoutMin > 0) ? timeoutMin : 5;
-  obj.deepsleep_interval_s = parseInt(document.getElementById('deepsleep_interval_s').value) || 20;
+  const deepMin = parseInt(document.getElementById('deepsleep_interval_min').value);
+  obj.deepsleep_interval_min = (deepMin && deepMin > 0) ? deepMin : 5;
 
   obj.device_name = document.getElementById('device_name').value || '';
   obj.admin_user = document.getElementById('admin_user').value || '';

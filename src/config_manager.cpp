@@ -45,10 +45,10 @@ void ConfigManager::applyDefaultsIfNeeded()
         config_.interactive_timeout_min = 5;
         Serial.println("  -> interactive_timeout_min set to 5");
     }
-    if (config_.deepsleep_interval_s == 0)
+    if (config_.deepsleep_interval_min == 0)
     {
-        config_.deepsleep_interval_s = 20;
-        Serial.println("  -> deepsleep_interval_s set to 20");
+        config_.deepsleep_interval_min = 5;
+        Serial.println("  -> deepsleep_interval_min set to 5");
     }
     if (config_.measure_interval_ms < 50)
     {
@@ -170,7 +170,19 @@ bool ConfigManager::loadFromPreferences()
     {
         config_.interactive_timeout_min = 0;
     }
-    config_.deepsleep_interval_s = prefs.getUInt("deep_int_s", 20);
+    // Prefer new minute-based key; fall back to legacy seconds key (converted)
+    config_.deepsleep_interval_min = prefs.getUInt("deep_int_min", 0);
+    if (config_.deepsleep_interval_min == 0)
+    {
+        uint32_t legacySeconds = prefs.getUInt("deep_int_s", 0);
+        if (legacySeconds > 0)
+        {
+            config_.deepsleep_interval_min = (legacySeconds + 59U) / 60U;
+            Serial.printf("  -> Converted legacy deep sleep: %lu s -> %lu min\n",
+                          (unsigned long)legacySeconds,
+                          (unsigned long)config_.deepsleep_interval_min);
+        }
+    }
 
     prefs.getString("adm_user", config_.admin_user, sizeof(config_.admin_user));
     prefs.getString("adm_pass", config_.admin_pass, sizeof(config_.admin_pass));
@@ -188,8 +200,8 @@ bool ConfigManager::loadFromPreferences()
                   config_.mqtt_host, config_.mqtt_port, config_.mqtt_user);
     Serial.printf("  -> Device: %s, Measure interval: %lu ms\n",
                   config_.device_name, config_.measure_interval_ms);
-    Serial.printf("  -> DeepSleep: %lu s, Interactive timeout: %lu min\n",
-                  (unsigned long)config_.deepsleep_interval_s,
+    Serial.printf("  -> DeepSleep: %lu min, Interactive timeout: %lu min\n",
+                  (unsigned long)config_.deepsleep_interval_min,
                   (unsigned long)config_.interactive_timeout_min);
     return true;
 }
@@ -225,7 +237,7 @@ bool ConfigManager::save()
 
     prefs.putString("dev_name", config_.device_name);
     prefs.putUInt("int_to_min", config_.interactive_timeout_min);
-    prefs.putUInt("deep_int_s", config_.deepsleep_interval_s);
+    prefs.putUInt("deep_int_min", config_.deepsleep_interval_min);
 
     prefs.putString("adm_user", config_.admin_user);
     prefs.putString("adm_pass", config_.admin_pass);
@@ -265,7 +277,7 @@ String ConfigManager::toJsonString()
 
     doc["device_name"] = config_.device_name;
     doc["interactive_timeout_min"] = config_.interactive_timeout_min;
-    doc["deepsleep_interval_s"] = config_.deepsleep_interval_s;
+    doc["deepsleep_interval_min"] = config_.deepsleep_interval_min;
 
     doc["admin_user"] = config_.admin_user;
     doc["admin_pass"] = "*****";
@@ -351,8 +363,10 @@ bool ConfigManager::updateFromJson(const String &json)
             uint32_t legacyMs = doc["interactive_timeout_ms"].as<uint32_t>();
             config_.interactive_timeout_min = (legacyMs + 59999UL) / 60000UL;
         }
-        if (doc["deepsleep_interval_s"].is<uint32_t>())
-            config_.deepsleep_interval_s = doc["deepsleep_interval_s"];
+        if (doc["deepsleep_interval_min"].is<uint32_t>())
+            config_.deepsleep_interval_min = doc["deepsleep_interval_min"];
+        else if (doc["deepsleep_interval_s"].is<uint32_t>())
+            config_.deepsleep_interval_min = (doc["deepsleep_interval_s"].as<uint32_t>() + 59U) / 60U;
 
         if (doc["admin_user"].is<const char *>())
             strlcpy(config_.admin_user, doc["admin_user"], sizeof(config_.admin_user));

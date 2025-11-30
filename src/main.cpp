@@ -54,6 +54,7 @@ static bool fullRefreshNext = false;
 static int readBatteryVoltage();
 void epdDraw(bool fullRefresh);
 static void goDeepSleep();
+static uint32_t computeSleepSecondsAlignedToMinute(uint32_t intervalMin);
 static const gpio_num_t WAKE_BUTTON = GPIO_NUM_0; // BOOT button (RTC-capable)
 void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &batteryMv);
 static const char *applyTimezoneFromConfig();
@@ -80,9 +81,7 @@ String getLatestMetricsJson()
 static void goDeepSleep()
 {
     const auto cfg = ConfigManager::instance().getConfig();
-    uint32_t sleepSeconds = cfg.deepsleep_interval_s;
-    if (sleepSeconds == 0)
-        sleepSeconds = 20;
+    uint32_t sleepSeconds = computeSleepSecondsAlignedToMinute(cfg.deepsleep_interval_min);
     // Request epdDraw to render the current page with a sleep indicator overlay
     showSleepIndicator = true;
     epdDraw(false);
@@ -103,6 +102,39 @@ static void goDeepSleep()
 
     Serial.printf("[POWER] Deep sleep for %lu s\n", (unsigned long)sleepSeconds);
     esp_deep_sleep_start();
+}
+
+// Compute sleep duration so wake-up occurs close to a minute boundary and never more than once per minute
+static uint32_t computeSleepSecondsAlignedToMinute(uint32_t intervalMin)
+{
+    // Enforce minimum interval of 1 minute
+    uint64_t minutes = (intervalMin == 0) ? 5ULL : intervalMin;
+    uint64_t intervalSec = minutes * 60ULL;
+    if (intervalSec < 60ULL)
+        intervalSec = 60ULL;
+
+    time_t nowEpoch = time(nullptr);
+    if (nowEpoch < 10000)
+    {
+        // If time is not available, fallback to the raw interval
+        return (uint32_t)intervalSec;
+    }
+
+    // Align target to the next minute boundary after the requested interval
+    uint64_t targetEpoch = nowEpoch + intervalSec;
+    uint64_t alignedEpoch = ((targetEpoch + 59ULL) / 60ULL) * 60ULL;
+    uint64_t sleepSec = (alignedEpoch > (uint64_t)nowEpoch) ? (alignedEpoch - (uint64_t)nowEpoch) : intervalSec;
+    if (sleepSec < 60ULL)
+        sleepSec = 60ULL;
+    if (sleepSec > 0xFFFFFFFFULL)
+        sleepSec = 0xFFFFFFFFULL;
+
+    Serial.printf("[POWER] Requested interval %llus -> aligned sleep %llus (now=%llu, target=%llu)\n",
+                  (unsigned long long)intervalSec,
+                  (unsigned long long)sleepSec,
+                  (unsigned long long)nowEpoch,
+                  (unsigned long long)alignedEpoch);
+    return (uint32_t)sleepSec;
 }
 
 static String getWifiStatusString()
