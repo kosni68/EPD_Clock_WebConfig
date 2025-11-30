@@ -10,6 +10,85 @@
 
 static AsyncWebServer server(80);
 
+// Non-blocking Wi-Fi scan state to avoid starving AsyncTCP/task watchdog
+static bool wifiScanRunning = false;
+static uint32_t wifiScanStartedMs = 0;
+static String wifiScanApsJson = "[]";
+static const uint32_t WIFI_SCAN_TIMEOUT_MS = 12000;
+static uint32_t wifiScanLastCompleteMs = 0;
+static const uint32_t WIFI_SCAN_MIN_INTERVAL_MS = 5000;
+
+static void beginAsyncWifiScan()
+{
+    // Ensure STA is enabled while keeping AP alive, so scan can run in AP mode too
+    wifi_mode_t mode = WiFi.getMode();
+    if (mode == WIFI_MODE_AP)
+    {
+        WiFi.mode(WIFI_MODE_APSTA);
+    }
+
+    WiFi.scanDelete();
+    wifiScanStartedMs = millis();
+    wifiScanRunning = true;
+    DEBUG_PRINT("[WEB][WiFi] Starting async scan...");
+    WiFi.scanNetworks(true /*async*/, true /*show hidden*/);
+}
+
+static void finalizeWifiScanIfComplete()
+{
+    if (!wifiScanRunning)
+        return;
+
+    int16_t res = WiFi.scanComplete();
+    if (res == WIFI_SCAN_RUNNING)
+    {
+        if ((uint32_t)(millis() - wifiScanStartedMs) > WIFI_SCAN_TIMEOUT_MS)
+        {
+            DEBUG_PRINT("[WEB][WiFi] Scan timeout, aborting.");
+            WiFi.scanDelete();
+            wifiScanRunning = false;
+            wifiScanLastCompleteMs = millis();
+        }
+        return;
+    }
+
+    if (res < 0)
+    {
+        DEBUG_PRINTF("[WEB][WiFi] Scan failed (%d)\n", res);
+        WiFi.scanDelete();
+        wifiScanRunning = false;
+        wifiScanLastCompleteMs = millis();
+        return;
+    }
+
+    String json = "[";
+    for (int i = 0; i < res; i++)
+    {
+        String ssid = WiFi.SSID(i);
+        ssid.replace("\\", "\\\\");
+        ssid.replace("\"", "\\\"");
+        if (i > 0)
+            json += ",";
+        json += "{\"ssid\":\"" + ssid + "\",\"rssi\":" + String(WiFi.RSSI(i)) + "}";
+    }
+    json += "]";
+
+    WiFi.scanDelete();
+    wifiScanApsJson = json;
+    wifiScanRunning = false;
+    wifiScanLastCompleteMs = millis();
+}
+
+static String buildWifiScanResponse(bool inProgress)
+{
+    String json = "{\"ok\":true,\"in_progress\":";
+    json += inProgress ? "true" : "false";
+    json += ",\"aps\":";
+    json += wifiScanApsJson;
+    json += "}";
+    return json;
+}
+
 static void handleGetConfig(AsyncWebServerRequest *request);
 static void handlePostConfig(AsyncWebServerRequest *request, const String &body);
 extern void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &batteryMv);
@@ -196,23 +275,19 @@ void startWebServer()
         interactiveLastTouchMs.store(millis());
         DEBUG_PRINT("[WEB] GET /api/wifi/scan (scanning)");
 
-        int n = WiFi.scanNetworks(/*async=*/false, /*hidden=*/true);
-        if (n < 0) {
-            request->send(500, "application/json; charset=utf-8", "{\"ok\":false,\"err\":\"scan failed\"}");
-            return;
+        // Avoid blocking the async web server: kick off async scan and return cached/partial data
+        finalizeWifiScanIfComplete();
+        const uint32_t nowMs = millis();
+        bool allowNewScan = (!wifiScanRunning) &&
+                            (wifiScanLastCompleteMs == 0 ||
+                             (uint32_t)(nowMs - wifiScanLastCompleteMs) > WIFI_SCAN_MIN_INTERVAL_MS);
+        if (allowNewScan)
+        {
+            beginAsyncWifiScan();
         }
+        finalizeWifiScanIfComplete(); // pick up instant completions
 
-        // Build a small JSON payload: {"ok":true,"aps":[{"ssid":"x","rssi":-50},{"ssid":"y","rssi":-70}]}
-        String json = "{\"ok\":true,\"aps\":[";
-        for (int i = 0; i < n; i++) {
-            String ssid = WiFi.SSID(i);
-            ssid.replace("\\", "\\\\"); // escape backslash
-            ssid.replace("\"", "\\\"");  // escape quotes
-            if (i > 0) json += ",";
-            json += "{\"ssid\":\"" + ssid + "\",\"rssi\":" + String(WiFi.RSSI(i)) + "}";
-        }
-        json += "]}";
-
+        String json = buildWifiScanResponse(wifiScanRunning);
         request->send(200, "application/json; charset=utf-8", json);
     });
 

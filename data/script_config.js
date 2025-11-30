@@ -171,20 +171,28 @@ document.getElementById('btnMqttTest').addEventListener('click', async () => {
 });
 
 // Wi-Fi scan + selection
-async function scanWifi() {
+let wifiScanRetryTimer = null;
+
+async function scanWifi(isRetry) {
   const btn = document.getElementById('btnScanWifi');
   const select = document.getElementById('wifi_scan_list');
   const status = document.getElementById('wifi_scan_status');
+  if (wifiScanRetryTimer) {
+    clearTimeout(wifiScanRetryTimer);
+    wifiScanRetryTimer = null;
+  }
   if (!btn || !select) return;
+  let inProgress = false;
   btn.disabled = true;
   if (status) {
-    status.innerText = 'Scanning...';
+    status.innerText = isRetry ? 'Scanning...' : 'Starting scan...';
     status.style.color = '#555';
   }
   try {
     const res = await fetch('/api/wifi/scan');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const j = await res.json();
+    inProgress = j && j.in_progress === true;
     if (!j.ok || !Array.isArray(j.aps)) throw new Error('Unexpected response');
 
     // Keep strongest entry per SSID
@@ -205,7 +213,14 @@ async function scanWifi() {
       opt.textContent = `${ap.ssid} (${ap.rssi || '?'} dBm)`;
       select.appendChild(opt);
     });
-    if (status) {
+    if (inProgress) {
+      if (status) {
+        status.innerText = 'Scanning...';
+        status.style.color = '#555';
+      }
+      wifiScanRetryTimer = setTimeout(() => scanWifi(true), 700);
+      return;
+    } else if (status) {
       status.innerText = aps.length ? `${aps.length} network(s) found` : 'No networks found';
       status.style.color = aps.length ? 'green' : 'red';
     }
@@ -215,7 +230,7 @@ async function scanWifi() {
       status.style.color = 'red';
     }
   } finally {
-    btn.disabled = false;
+    if (!inProgress) btn.disabled = false;
   }
 }
 
