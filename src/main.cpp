@@ -52,16 +52,24 @@ bool interactiveMode = false;
 static bool fullRefreshNext = false;
 // Track last drawn minute in interactive mode (to refresh once per minute)
 static int lastRenderedMinute = -1;
+// Power button long-press tracking
+static uint32_t powerButtonPressStartMs = 0;
+static bool powerOffInitiated = false;
 
 static int readBatteryVoltage();
 void epdDraw(bool fullRefresh);
 static void goDeepSleep();
 static uint32_t computeSleepSecondsAlignedToMinute();
 static const gpio_num_t WAKE_BUTTON = GPIO_NUM_0; // BOOT button (RTC-capable)
+static const gpio_num_t PWR_BUTTON = GPIO_NUM_18; // PWR button (active low)
+static const uint32_t POWER_BUTTON_LONG_MS = 1500;
 void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &batteryMv);
 static const char *applyTimezoneFromConfig();
 static void syncRtcFromNtpIfPossible();
 static void clearTextArea(const String &text, int cursorX, int cursorY, uint16_t pad, uint16_t color = GxEPD_WHITE);
+static void handlePowerButton(uint32_t nowMs);
+static void shutdownFromPowerButton();
+static void drawPowerOffScreen();
 // Latest metrics snapshot (kept for dashboard polling)
 static float latest_tempC = 0.0f;
 static float latest_humidity = 0.0f;
@@ -236,19 +244,19 @@ void readTimeAndSensorAndPrepareStrings(float &tempC, float &humidityPct, int &b
     tmp = String(tempC, 1);
     hum2 = String(humidityPct, 1);
 
-    // Update latest metrics snapshot for dashboard
-    latest_tempC = tempC;
-    latest_humidity = humidityPct;
-    latest_batteryMv = batteryMv;
-    latest_time_str = tt;
-    latest_date_str = dateString;
-
     batteryMv = readBatteryVoltage();
     voltageSegments = map(batteryMv, 3100, 4200, 0, 5);
     if (voltageSegments < 0)
         voltageSegments = 0;
     if (voltageSegments > 5)
         voltageSegments = 5;
+
+    // Update latest metrics snapshot for dashboard
+    latest_tempC = tempC;
+    latest_humidity = humidityPct;
+    latest_batteryMv = batteryMv;
+    latest_time_str = tt;
+    latest_date_str = dateString;
 
     DEBUG_PRINTF("[SENSORS] %s %s -> T=%.1fC H=%.1f%% Batt=%dmV\n",
                  tt.c_str(), dateString.c_str(),
@@ -300,6 +308,79 @@ static void syncRtcFromNtpIfPossible()
                  timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec,
                  timeinfo.tm_mday, timeinfo.tm_mon + 1, timeinfo.tm_year + 1900,
                  timeinfo.tm_wday);
+}
+
+// Render a short confirmation before cutting VBAT power (long press on PWR)
+static void drawPowerOffScreen()
+{
+    SPI.begin(EPD_SCK, -1, EPD_MOSI, EPD_CS);
+    display.epd2.selectSPI(SPI, SPISettings(SPI_CLOCK_HZ, MSBFIRST, SPI_MODE0));
+    display.init(115200, true);
+    display.setRotation(0);
+    display.setFullWindow();
+    display.firstPage();
+    do
+    {
+        display.fillRect(0, 0, display.width(), display.height(), GxEPD_WHITE);
+        display.setTextColor(GxEPD_BLACK);
+        display.setFont(&DejaVu_Sans_Condensed_Bold_18);
+        display.setCursor(36, 102);
+        display.print("Powering off");
+        display.setFont(&DejaVu_Sans_Condensed_Bold_15);
+        display.setCursor(36, 126);
+        display.print("VBAT disabled");
+    } while (display.nextPage());
+}
+
+// Long-press PWR button -> disable VBAT rail and halt (mirrors Waveshare test)
+static void shutdownFromPowerButton()
+{
+    disconnectWiFiClean();
+    drawPowerOffScreen();
+    display.hibernate();
+
+    // Turn off peripherals before cutting battery rail
+    digitalWrite(EPD_PWR, HIGH);
+    delay(10);
+    digitalWrite(VBAT_PWR, LOW);
+
+    gpio_hold_en((gpio_num_t)VBAT_PWR);
+    gpio_hold_en((gpio_num_t)EPD_PWR);
+    gpio_deep_sleep_hold_en();
+
+    DEBUG_PRINT("[POWER] VBAT power off (deep sleep / halt).");
+    esp_deep_sleep_start();
+
+    // Fallback: remain idle if deep sleep does not start (e.g. powered via USB)
+    while (true)
+    {
+        delay(1000);
+    }
+}
+
+static void handlePowerButton(uint32_t nowMs)
+{
+    if (powerOffInitiated)
+        return;
+
+    const bool pressed = (digitalRead((int)PWR_BUTTON) == LOW);
+    if (pressed)
+    {
+        if (powerButtonPressStartMs == 0)
+        {
+            powerButtonPressStartMs = nowMs;
+        }
+        else if ((uint32_t)(nowMs - powerButtonPressStartMs) >= POWER_BUTTON_LONG_MS)
+        {
+            powerOffInitiated = true;
+            DEBUG_PRINT("[POWER] PWR long press detected -> shutting down VBAT.");
+            shutdownFromPowerButton();
+        }
+    }
+    else
+    {
+        powerButtonPressStartMs = 0;
+    }
 }
 
 void epdDraw(bool fullRefresh)
@@ -487,6 +568,8 @@ void setup()
 
     // BOOT button (GPIO0) used as deep-sleep wake source (active low)
     pinMode((int)WAKE_BUTTON, INPUT_PULLUP);
+    // PWR button (GPIO18) for manual shutdown while on battery
+    pinMode((int)PWR_BUTTON, INPUT_PULLUP);
 
     delay(10);
 
@@ -594,10 +677,12 @@ void setup()
 
 void loop()
 {
+    const uint32_t nowMs = millis();
+    handlePowerButton(nowMs);
+
     if (interactiveMode)
     {
         static uint32_t lastMinutePollMs = 0;
-        const uint32_t nowMs = millis();
 
         // Auto-refresh display once per minute in interactive/AP mode
         if ((uint32_t)(nowMs - lastMinutePollMs) > 1000)
@@ -628,7 +713,7 @@ void loop()
             if (isApModeActive())
             {
                 DEBUG_PRINT("[POWER] AP active, staying in interactive mode.");
-                interactiveLastTouchMs.store(millis());
+                interactiveLastTouchMs.store(nowMs);
             }
             else
             {
